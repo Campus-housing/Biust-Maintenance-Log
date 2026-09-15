@@ -17,3 +17,4 @@ export const secondaryAuth = getAuth(secondaryApp);
 export const ticketsCol = collection(db, 'tickets');
 export const usersCol = collection(db, 'users');
 export const publicBoardCol = collection(db, 'publicBoard');
+export const submissionsCol = collection(db, 'submissions');

@@ -2,12 +2,14 @@ import { useAuth } from '../contexts/AuthContext';
 import { ROLE_META } from '../utils/constants';
 import { specialtyLabel } from '../utils/helpers';
 import { downloadWorkbook } from '../utils/export';
+import { useSubmissionsCount } from '../hooks/useSubmissionsCount';
 
-export default function IdentityCard({ tickets, onOpenManage, onOpenSummary }) {
+export default function IdentityCard({ tickets, onOpenManage, onOpenSummary, onOpenInbox }) {
   const {
     currentUser, role, name, specialty, assignedBlocks, publicMode,
     isAdmin, isMaintainer, canSeeOversight, logout, exitPublicMode,
   } = useAuth();
+  const { count: inboxCount, canReview } = useSubmissionsCount();
 
   if (publicMode) {
     return (
@@ -40,6 +42,11 @@ export default function IdentityCard({ tickets, onOpenManage, onOpenSummary }) {
         <span style={{ marginLeft: 'auto', display: 'flex', gap: 8, flexWrap: 'wrap' }}>
           {isAdmin && <button type="button" className="badge-btn" onClick={onOpenManage}>Manage</button>}
           {canSeeOversight && <button type="button" className="badge-btn" onClick={onOpenSummary}>Summary</button>}
+          {canReview && (
+            <button type="button" className="badge-btn" onClick={onOpenInbox} style={inboxCount > 0 ? { borderColor: '#F2A93C', color: '#F2A93C' } : undefined}>
+              Inbox{inboxCount > 0 ? ' (' + inboxCount + ')' : ''}
+            </button>
+          )}
           <button type="button" className="badge-btn" onClick={() => downloadWorkbook(tickets, role || 'export')}>Export</button>
           <button type="button" className="badge-btn" onClick={logout}>Log out</button>
         </span>

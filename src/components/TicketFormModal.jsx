@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { addDoc, doc, setDoc } from 'firebase/firestore';
 import { ticketsCol, db } from '../firebase';
 import { useAuth } from '../contexts/AuthContext';
+import { useToast } from '../contexts/ToastContext';
 import { BLOCK_GROUPS, FACILITIES_GROUP, CATEGORIES } from '../utils/constants';
 import { makeTicketCode, publicMirror } from '../utils/helpers';
 
@@ -15,6 +16,7 @@ function visibleBlockGroups({ canManageTickets, canSeeOversight, assignedBlocks 
 
 export default function TicketFormModal({ onClose }) {
   const { currentUser, name, canManageTickets, canSeeOversight, assignedBlocks } = useAuth();
+  const showToast = useToast();
   const groups = visibleBlockGroups({ canManageTickets, canSeeOversight, assignedBlocks });
 
   const [block, setBlock] = useState(groups[0]?.options[0] || '');
@@ -75,6 +77,7 @@ export default function TicketFormModal({ onClose }) {
     try {
       const ref = await addDoc(ticketsCol, ticket);
       setDoc(doc(db, 'publicBoard', ref.id), publicMirror(ticket)).catch((e) => console.error('public mirror write failed', e));
+      showToast('Ticket submitted');
       onClose();
     } catch (e) {
       console.error(e);

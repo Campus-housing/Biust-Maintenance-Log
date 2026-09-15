@@ -1,9 +1,13 @@
 import { useState } from 'react';
 import { useAuth } from '../contexts/AuthContext';
+import { useTheme } from '../hooks/useTheme';
 import { friendlyAuthError } from '../utils/helpers';
+import ThemeToggle from './ThemeToggle';
+import SubmissionForm from './SubmissionForm';
 
 export default function AuthScreen() {
   const { signIn, signUp, forgotPassword, enterPublicMode } = useAuth();
+  const { theme, toggleTheme } = useTheme();
   const [mode, setMode] = useState('login');
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
@@ -11,6 +15,7 @@ export default function AuthScreen() {
   const [error, setError] = useState('');
   const [info, setInfo] = useState('');
   const [busy, setBusy] = useState(false);
+  const [reportOpen, setReportOpen] = useState(false);
 
   const isSignup = mode === 'signup';
 
@@ -45,6 +50,9 @@ export default function AuthScreen() {
   return (
     <div className="center-screen" style={{ padding: 24 }}>
       <div style={{ width: '100%', maxWidth: 360 }}>
+        <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 12 }}>
+          <ThemeToggle theme={theme} onToggle={toggleTheme} />
+        </div>
         <div style={{ textAlign: 'center', marginBottom: 24 }}>
           <h1 className="display" style={{ fontSize: 23, margin: '0 0 4px' }}>BIUST Maintenance &amp; Facilities Log</h1>
           <p className="dim" style={{ fontSize: 13, margin: 0 }}>{isSignup ? 'Create an account to report issues' : 'Log in to continue'}</p>
@@ -77,7 +85,13 @@ export default function AuthScreen() {
             View status board without logging in
           </button>
         </p>
+        <p style={{ textAlign: 'center', fontSize: 12, margin: '8px 0 0' }}>
+          <button type="button" className="link-btn" style={{ color: 'var(--muted)', textDecoration: 'underline' }} onClick={() => setReportOpen(true)}>
+            Report an issue without logging in
+          </button>
+        </p>
       </div>
+      {reportOpen && <SubmissionForm onClose={() => setReportOpen(false)} />}
     </div>
   );
 }

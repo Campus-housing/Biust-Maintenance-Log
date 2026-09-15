@@ -2,9 +2,9 @@ import { STATUSES, CATEGORIES } from '../utils/constants';
 import { isArchived } from '../utils/helpers';
 
 function Chip({ active, color, onClick, children }) {
-  const bg = active ? (color || '#E8ECF4') : 'transparent';
-  const bd = active ? (color || '#E8ECF4') : '#2A3550';
-  const fg = active ? '#0B1220' : '#8B96AD';
+  const bg = active ? (color || 'var(--text)') : 'transparent';
+  const bd = active ? (color || 'var(--text)') : 'var(--border-soft)';
+  const fg = active ? (color ? '#0B1220' : 'var(--bg)') : 'var(--muted)';
   return (
     <button type="button" className="chip" style={{ background: bg, borderColor: bd, color: fg }} onClick={onClick}>
       {children}

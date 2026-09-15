@@ -2,11 +2,13 @@ import { useState } from 'react';
 import { doc, updateDoc, deleteDoc, setDoc, arrayUnion } from 'firebase/firestore';
 import { db } from '../firebase';
 import { useAuth } from '../contexts/AuthContext';
+import { useToast } from '../contexts/ToastContext';
 import { STATUSES } from '../utils/constants';
 import { categoryMeta, statusMeta, formatDate } from '../utils/helpers';
 
 export default function TicketDetailModal({ ticket, onClose, onOpenPhoto }) {
   const { currentUser, name, role, canManageTickets } = useAuth();
+  const showToast = useToast();
   const [pendingStatus, setPendingStatus] = useState(null);
   const [statusSaving, setStatusSaving] = useState(false);
   const [statusError, setStatusError] = useState('');
@@ -29,9 +31,17 @@ export default function TicketDetailModal({ ticket, onClose, onOpenPhoto }) {
     if (!pendingStatus) return;
     const resolvedAt = pendingStatus === 'done' ? new Date().toISOString() : null;
     setStatusSaving(true);
+    const historyNote = {
+      text: 'Status changed to ' + statusMeta(pendingStatus).label + '.',
+      byName: name || (currentUser && currentUser.email) || 'Someone',
+      byRole: role || 'staff',
+      at: new Date().toISOString(),
+      isSystem: true,
+    };
     try {
-      await updateDoc(doc(db, 'tickets', ticket.id), { status: pendingStatus, resolvedAt });
+      await updateDoc(doc(db, 'tickets', ticket.id), { status: pendingStatus, resolvedAt, notes: arrayUnion(historyNote) });
       setDoc(doc(db, 'publicBoard', ticket.id), { status: pendingStatus, resolvedAt }, { merge: true }).catch((e) => console.error('public mirror update failed', e));
+      showToast('Status updated to ' + statusMeta(pendingStatus).label);
       setPendingStatus(null);
     } catch (e) {
       console.error(e);
@@ -49,6 +59,7 @@ export default function TicketDetailModal({ ticket, onClose, onOpenPhoto }) {
     try {
       await updateDoc(doc(db, 'tickets', ticket.id), { notes: arrayUnion(note) });
       setNoteText('');
+      showToast('Note posted');
     } catch (e) {
       console.error(e);
       setNoteError('Could not post that note. Try again.');
@@ -62,6 +73,7 @@ export default function TicketDetailModal({ ticket, onClose, onOpenPhoto }) {
     try {
       await deleteDoc(doc(db, 'tickets', ticket.id));
       deleteDoc(doc(db, 'publicBoard', ticket.id)).catch((e) => console.error('public mirror delete failed', e));
+      showToast('Report deleted');
       onClose();
     } catch (e) {
       console.error(e);
@@ -114,7 +126,7 @@ export default function TicketDetailModal({ ticket, onClose, onOpenPhoto }) {
                   ? { borderColor: s.color, background: s.color, color: '#0B1220' }
                   : isCurrent
                   ? { borderColor: s.color, background: s.color + '22', color: s.color }
-                  : { borderColor: '#2A3550', background: 'transparent', color: '#8B96AD' };
+                  : { borderColor: 'var(--border-soft)', background: 'transparent', color: 'var(--muted)' };
                 return (
                   <button
                     key={s.id} type="button" className="status-opt-btn" style={style}
@@ -159,8 +171,14 @@ export default function TicketDetailModal({ ticket, onClose, onOpenPhoto }) {
               ) : (
                 ticket.notes.map((n, i) => (
                   <div key={i} className="note-row">
-                    <div className="note-meta"><strong>{n.byName || 'Someone'}</strong> <span className="dim"> · {n.byRole} · {formatDate(n.at)}</span></div>
-                    <p className="note-text">{n.text}</p>
+                    <div className="note-meta">
+                      {n.isSystem ? (
+                        <span className="dim">🔄 {n.byName || 'Someone'} · {formatDate(n.at)}</span>
+                      ) : (
+                        <><strong>{n.byName || 'Someone'}</strong> <span className="dim"> · {n.byRole} · {formatDate(n.at)}</span></>
+                      )}
+                    </div>
+                    <p className="note-text" style={n.isSystem ? { fontStyle: 'italic', color: 'var(--dim)' } : undefined}>{n.text}</p>
                   </div>
                 ))
               )}

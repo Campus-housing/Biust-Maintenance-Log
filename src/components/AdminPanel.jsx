@@ -3,6 +3,7 @@ import { doc, setDoc, updateDoc, getDocs } from 'firebase/firestore';
 import { createUserWithEmailAndPassword, updateProfile, signOut } from 'firebase/auth';
 import { secondaryAuth, usersCol, db } from '../firebase';
 import { useAuth } from '../contexts/AuthContext';
+import { useToast } from '../contexts/ToastContext';
 import { SPECIALTIES, ROLE_OPTIONS, RESIDENTIAL_BLOCKS } from '../utils/constants';
 import { specialtyLabel, friendlyAuthError } from '../utils/helpers';
 
@@ -120,6 +121,7 @@ function UserRow({ u, isEditing, onToggleEdit, onSave }) {
 
 export default function AdminPanel({ onClose }) {
   const { currentUser } = useAuth();
+  const showToast = useToast();
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -167,6 +169,7 @@ export default function AdminPanel({ onClose }) {
       setCreatedMessage(buildStaffMessage(name, email, password, staffRole, staffSpecialty));
       setCopyLabel('Copy message');
       setName(''); setEmail(''); setPassword('');
+      showToast('Account created');
       loadUsers();
     } catch (e) {
       console.error(e);
@@ -190,6 +193,7 @@ export default function AdminPanel({ onClose }) {
     try {
       await updateDoc(doc(db, 'users', uid), update);
       setEditingUserId(null);
+      showToast('Changes saved');
       loadUsers();
     } catch (e) {
       console.error(e);
