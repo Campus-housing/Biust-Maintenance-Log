@@ -4,7 +4,7 @@ import { db, submissionsCol, ticketsCol } from '../firebase';
 import { useAuth } from '../contexts/AuthContext';
 import { useToast } from '../contexts/ToastContext';
 import { BLOCK_GROUPS, CATEGORIES } from '../utils/constants';
-import { categoryMeta, formatDate, makeTicketCode, publicMirror } from '../utils/helpers';
+import { categoryMeta, formatDate, makeTicketCode, publicMirror, semesterForDate } from '../utils/helpers';
 
 function SubmissionCard({ s, onAccept, onDecline }) {
   const [open, setOpen] = useState(false);
@@ -48,7 +48,7 @@ function SubmissionCard({ s, onAccept, onDecline }) {
         <span>
           <strong>{s.block || '(no location given)'}{s.room ? ' · Rm ' + s.room : ''}</strong>
           <br /><span className="dim" style={{ fontSize: 11 }}>{cat.icon} {s.description}</span>
-          <br /><span className="dim" style={{ fontSize: 10 }}>{formatDate(s.submittedAt)}{s.reportedBy ? ' · ' + s.reportedBy : ''}</span>
+          <br /><span className="dim" style={{ fontSize: 10 }}>{formatDate(s.submittedAt)}{s.reportedBy ? ' · ' + s.reportedBy : ''}{s.contact ? ' · 📞 ' + s.contact : ''}</span>
         </span>
         <span className="mono" style={{ fontSize: 11, color: 'var(--muted)' }}>{s.urgent ? '🚩 ' : ''}{open ? '▾' : '▸'}</span>
       </button>
@@ -133,7 +133,8 @@ export default function SubmissionsPanel({ onClose }) {
       code, block: draft.block, room: draft.room.trim(), category: draft.category,
       description: draft.description.trim(), reportedBy: submission.reportedBy || '', contact: draft.contact.trim(),
       urgent: !!draft.urgent, photo: submission.photo || null,
-      status: 'pending', reportedAt: new Date().toISOString(), resolvedAt: null,
+      status: 'pending', reportedAt: submission.submittedAt || new Date().toISOString(), acceptedAt: new Date().toISOString(),
+      resolvedAt: null, semester: semesterForDate(submission.submittedAt).id,
       reportedByUid: currentUser.uid, notes: [{
         text: 'Accepted from a student submission.', byName: name || currentUser.email, byRole: 'system', at: new Date().toISOString(), isSystem: true,
       }],

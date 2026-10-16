@@ -1,0 +1,76 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function isSignedIn() { return request.auth != null; }
+    function myUser() { return get(/databases/$(database)/documents/users/$(request.auth.uid)).data; }
+    function myRole() { return myUser().role; }
+    function isAdmin() { return isSignedIn() && myRole() == 'admin'; }
+    function isMaintainer() { return isSignedIn() && myRole() == 'maintainer'; }
+    function isSupervisor() { return isSignedIn() && myRole() == 'supervisor'; }
+    function isReporter() { return isSignedIn() && myRole() == 'reporter'; }
+    function isStaff() { return isAdmin() || isMaintainer() || isSupervisor(); }
+    function mySpecialty() { return ('specialty' in myUser()) ? myUser().specialty : 'all'; }
+    function myAssignedBlocks() { return ('assignedBlocks' in myUser()) ? myUser().assignedBlocks : []; }
+    function isOwner() { return isSignedIn() && resource.data.reportedByUid == request.auth.uid; }
+    function canSeeTicket(cat) {
+      return isAdmin() || isSupervisor()
+        || (isMaintainer() && (mySpecialty() == 'all' || mySpecialty() == cat));
+    }
+    function canManageTicket(cat) {
+      return isAdmin() || (isMaintainer() && (mySpecialty() == 'all' || mySpecialty() == cat));
+    }
+    function isResidentialBlock(b) {
+      return b in [
+        'BPC','1','2','3','4','5','6','A','B','C','D','E','F',
+        'Sekgoma 1','Sekgoma 2','Sekgoma 3','Sekgoma 4',
+        'Fengyue 1','Fengyue 2','Fengyue 3','Fengyue 4',
+        'Old Main Boys','Old Main Girls','New Main Boys','New Main Girls'
+      ];
+    }
+
+    match /users/{userId} {
+      allow read: if isSignedIn() && (request.auth.uid == userId || isStaff());
+      allow create: if isAdmin()
+                    || (isSignedIn() && request.auth.uid == userId && request.resource.data.role == 'reporter');
+      allow update: if isAdmin()
+                    || (isSignedIn() && request.auth.uid == userId && request.resource.data.role == resource.data.role);
+      allow delete: if isAdmin();
+    }
+
+    match /tickets/{ticketId} {
+      allow create: if isSignedIn()
+                    && request.resource.data.reportedByUid == request.auth.uid
+                    && request.resource.data.status == 'pending'
+                    && (
+                         isAdmin() || isMaintainer() || isSupervisor()
+                         || !isResidentialBlock(request.resource.data.block)
+                         || (request.resource.data.block in myAssignedBlocks())
+                       );
+      allow read: if canSeeTicket(resource.data.category) || isOwner();
+      allow update: if canManageTicket(resource.data.category)
+                    || ((isSupervisor() || isOwner()) && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['notes']));
+      allow delete: if isAdmin()
+                    || (isOwner() && resource.data.status == 'pending');
+    }
+
+    match /publicBoard/{ticketId} {
+      allow read: if true;
+      allow write: if isSignedIn();
+    }
+
+    match /submissions/{id} {
+      allow create: if request.resource.data.keys().hasAll(['block','room','description','status','submittedAt'])
+                    && request.resource.data.status == 'pending'
+                    && request.resource.data.block is string
+                    && request.resource.data.room is string
+                    && request.resource.data.description is string
+                    && request.resource.data.description.size() < 2000;
+      allow read: if isAdmin()
+                    || (isReporter() && resource.data.block in myAssignedBlocks());
+      allow update: if (isAdmin() || (isReporter() && resource.data.block in myAssignedBlocks()))
+                    && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status','reviewedBy','reviewedByName','reviewedAt','linkedTicketId']);
+      allow delete: if isAdmin();
+    }
+  }
+}

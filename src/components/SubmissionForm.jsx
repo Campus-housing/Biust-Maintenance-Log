@@ -283,6 +283,8 @@ export default function SubmissionForm({ onClose }) {
                     </div>
                     <label className="field-label">Description</label>
                     <textarea className="input" rows={2} style={{ marginBottom: 8 }} value={d.description} onChange={(e) => updateDraft(i, { description: e.target.value })} />
+                    <label className="field-label">Access contact (optional)</label>
+                    <input className="input" placeholder="Phone" style={{ marginBottom: 8 }} value={d.contact || ''} onChange={(e) => updateDraft(i, { contact: e.target.value })} />
                     <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
                       <select className="input" style={{ width: 'auto', flex: 1 }} value={d.category} onChange={(e) => updateDraft(i, { category: e.target.value })}>
                         {CATEGORIES.map((c) => <option key={c.id} value={c.id}>{c.icon} {c.label}</option>)}

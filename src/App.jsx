@@ -15,12 +15,16 @@ import AdminPanel from './components/AdminPanel';
 import SummaryPanel from './components/SummaryPanel';
 import SubmissionsPanel from './components/SubmissionsPanel';
 import PhotoOverlay from './components/PhotoOverlay';
+import SemesterSelect from './components/SemesterSelect';
+import { currentSemester, scopeToSemester } from './utils/helpers';
+import { SEMESTERS } from './utils/constants';
 
 export default function App() {
   const { initializing, currentUser, publicMode, isBoardView } = useAuth();
   const { tickets, loading, error } = useTickets();
   const { theme, toggleTheme } = useTheme();
 
+  const [semesterId, setSemesterId] = useState(() => currentSemester().id);
   const [search, setSearch] = useState('');
   const [filterStatus, setFilterStatus] = useState('all');
   const [filterCategory, setFilterCategory] = useState('all');
@@ -42,6 +46,9 @@ export default function App() {
 
   const board = isBoardView;
   const detailTicket = tickets.find((t) => t.id === detailTicketId) || null;
+  // Board views are scoped to the chosen semester (open tickets from earlier ones carry over).
+  const visibleTickets = board ? scopeToSemester(tickets, semesterId) : tickets;
+  const semesterLabel = semesterId === 'all' ? 'All semesters' : (SEMESTERS.find((s) => s.id === semesterId) || {}).label;
 
   return (
     <div>
@@ -50,16 +57,22 @@ export default function App() {
           <h1 className="display">BIUST M&amp;F Log</h1>
           <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
             <ThemeToggle theme={theme} onToggle={toggleTheme} />
-            <span className="mono dim">{tickets.length}{board ? ' total' : tickets.length === 1 ? ' report' : ' reports'}</span>
+            <span className="mono dim">{visibleTickets.length}{board ? ' total' : visibleTickets.length === 1 ? ' report' : ' reports'}</span>
           </div>
         </div>
         <IdentityCard tickets={tickets} onOpenManage={() => setAdminOpen(true)} onOpenSummary={() => setSummaryOpen(true)} onOpenInbox={() => setInboxOpen(true)} />
         <p className="subtitle">{board ? 'Report and track campus maintenance issues' : "Track the issues you've reported"}</p>
 
-        {board && <StatsGrid tickets={tickets} />}
+        {board && (
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+            <span className="dim" style={{ fontSize: 11 }}>Showing</span>
+            <SemesterSelect value={semesterId} onChange={setSemesterId} />
+          </div>
+        )}
+        {board && <StatsGrid tickets={visibleTickets} />}
         {board && (
           <Filters
-            tickets={tickets}
+            tickets={visibleTickets}
             search={search} setSearch={setSearch}
             filterStatus={filterStatus} setFilterStatus={setFilterStatus}
             filterCategory={filterCategory} setFilterCategory={setFilterCategory}
@@ -71,7 +84,7 @@ export default function App() {
 
         {board ? (
           <BoardList
-            tickets={tickets} loading={loading}
+            tickets={visibleTickets} loading={loading}
             search={search} filterStatus={filterStatus} filterCategory={filterCategory} filterUrgent={filterUrgent}
             onOpen={setDetailTicketId} onOpenPhoto={setPhotoUrl}
           />
@@ -89,7 +102,7 @@ export default function App() {
         <TicketDetailModal ticket={detailTicket} onClose={() => setDetailTicketId(null)} onOpenPhoto={setPhotoUrl} />
       )}
       {adminOpen && <AdminPanel onClose={() => setAdminOpen(false)} />}
-      {summaryOpen && <SummaryPanel tickets={tickets} onClose={() => setSummaryOpen(false)} />}
+      {summaryOpen && <SummaryPanel tickets={visibleTickets} semesterLabel={semesterLabel} onClose={() => setSummaryOpen(false)} />}
       {inboxOpen && <SubmissionsPanel onClose={() => setInboxOpen(false)} />}
       <PhotoOverlay url={photoUrl} onClose={() => setPhotoUrl(null)} />
     </div>
