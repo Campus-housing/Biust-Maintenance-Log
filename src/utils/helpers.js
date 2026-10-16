@@ -1,4 +1,4 @@
-import { CATEGORIES, STATUSES, SPECIALTIES, ARCHIVE_MS, RESIDENTIAL_BLOCKS } from './constants';
+import { CATEGORIES, STATUSES, SPECIALTIES, ARCHIVE_MS, RESIDENTIAL_BLOCKS, SEMESTERS } from './constants';
 
 export function categoryMeta(id) {
   return CATEGORIES.find((c) => c.id === id) || CATEGORIES[3];
@@ -69,4 +69,72 @@ export function ticketMatchesSearch(t, query) {
     roomLower.includes(tok) ||
     freeText.includes(tok)
   );
+}
+
+
+// ---------- Semesters ----------
+export function semesterForDate(iso) {
+  const t = iso ? new Date(iso).getTime() : Date.now();
+  let found = SEMESTERS[0];
+  for (const sem of SEMESTERS) {
+    if (t >= new Date(sem.start).getTime()) found = sem;
+  }
+  return found;
+}
+export function currentSemester() {
+  return semesterForDate(new Date().toISOString());
+}
+export function semesterOf(ticket) {
+  return SEMESTERS.find((s) => s.id === ticket.semester) || semesterForDate(ticket.reportedAt);
+}
+
+// Returns the tickets that belong in a semester's view: everything created during
+// it, plus anything created earlier that was still unresolved when it began
+// (tagged with _carriedFrom so the card can say so). 'all' returns everything.
+export function scopeToSemester(tickets, semesterId) {
+  if (semesterId === 'all') return tickets;
+  const idx = SEMESTERS.findIndex((s) => s.id === semesterId);
+  if (idx === -1) return tickets;
+  const start = new Date(SEMESTERS[idx].start).getTime();
+  const end = idx + 1 < SEMESTERS.length ? new Date(SEMESTERS[idx + 1].start).getTime() : Infinity;
+  const out = [];
+  tickets.forEach((t) => {
+    const created = new Date(t.reportedAt).getTime();
+    const sem = semesterOf(t);
+    if (sem.id === semesterId) {
+      out.push(t);
+    } else if (idx > 0 && created < start) {
+      const stillOpen = t.status !== 'done' || !t.resolvedAt || new Date(t.resolvedAt).getTime() >= start;
+      if (stillOpen && created < end) out.push({ ...t, _carriedFrom: sem.short });
+    }
+  });
+  return out;
+}
+
+// ---------- Resolution time ----------
+// Milliseconds from reported to resolved, or null if it isn't resolved (or the
+// dates don't make sense).
+export function resolutionMs(t) {
+  if (t.status !== 'done' || !t.resolvedAt || !t.reportedAt) return null;
+  const ms = new Date(t.resolvedAt).getTime() - new Date(t.reportedAt).getTime();
+  return Number.isFinite(ms) && ms >= 0 ? ms : null;
+}
+export function formatDuration(ms) {
+  if (ms == null || !Number.isFinite(ms)) return '—';
+  const mins = Math.floor(ms / 60000);
+  if (mins < 1) return '<1m';
+  if (mins < 60) return mins + 'm';
+  const hours = Math.floor(mins / 60);
+  if (hours < 24) return hours + 'h ' + (mins % 60) + 'm';
+  const days = Math.floor(hours / 24);
+  return days + 'd ' + (hours % 24) + 'h';
+}
+export function average(nums) {
+  return nums.length ? nums.reduce((a, b) => a + b, 0) / nums.length : null;
+}
+export function median(nums) {
+  if (!nums.length) return null;
+  const sorted = [...nums].sort((a, b) => a - b);
+  const mid = Math.floor(sorted.length / 2);
+  return sorted.length % 2 ? sorted[mid] : (sorted[mid - 1] + sorted[mid]) / 2;
 }

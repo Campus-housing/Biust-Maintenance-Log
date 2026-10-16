@@ -53,3 +53,13 @@ export const ROLE_META = {
 };
 
 export const ARCHIVE_MS = 7 * 24 * 60 * 60 * 1000;
+
+// Academic semesters, oldest first. A semester runs from its `start` date until
+// the next one's start (the last one is open-ended). The "current" semester is
+// whichever one has started most recently — so when a new start date passes, the
+// app rolls over on its own, and anything still open carries into it.
+// When the real Semester 2 start date is known, change its `start` below.
+export const SEMESTERS = [
+  { id: '2026-27-S1', label: '2026/27 · Semester 1', short: 'S1 26/27', start: '2026-08-01' },
+  { id: '2026-27-S2', label: '2026/27 · Semester 2', short: 'S2 26/27', start: '2027-02-01' },
+];

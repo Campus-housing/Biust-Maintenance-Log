@@ -4,7 +4,7 @@ import { ticketsCol, db } from '../firebase';
 import { useAuth } from '../contexts/AuthContext';
 import { useToast } from '../contexts/ToastContext';
 import { BLOCK_GROUPS, FACILITIES_GROUP, CATEGORIES } from '../utils/constants';
-import { makeTicketCode, publicMirror } from '../utils/helpers';
+import { makeTicketCode, publicMirror, currentSemester } from '../utils/helpers';
 
 function visibleBlockGroups({ canManageTickets, canSeeOversight, assignedBlocks }) {
   if (canManageTickets || canSeeOversight) return BLOCK_GROUPS;
@@ -71,7 +71,7 @@ export default function TicketFormModal({ onClose }) {
       code, block, room: room.trim(), category, description: description.trim(),
       reportedBy: reportedBy.trim(), contact: contact.trim(),
       urgent: !!urgent, photo: photo || null,
-      status: 'pending', reportedAt: new Date().toISOString(), resolvedAt: null,
+      status: 'pending', reportedAt: new Date().toISOString(), resolvedAt: null, semester: currentSemester().id,
       reportedByUid: currentUser.uid, notes: [],
     };
     try {

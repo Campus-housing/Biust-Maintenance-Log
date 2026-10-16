@@ -1,55 +1,106 @@
-# BIUST Maintenance & Facilities Log — React version
+# BIUST Maintenance & Facilities Log
 
-This is the React + Vite rewrite of the app, functionally identical to the previous single-file version, deployed via GitHub Actions instead of manually uploading a built file.
+A shared, real-time tool for reporting and tracking maintenance issues across BIUST accommodation blocks and campus facilities — built to replace the old WhatsApp "MAINTENANCE&FACILITIES" group, where reports piled up in one long, unsearchable thread with no record of what got fixed.
 
-## What's different from the old version
+It's a React app (Vite build, auto-deployed by GitHub Actions) backed by Firebase, installable to a phone's home screen like a native app.
 
-- Real component architecture (`src/components/`), not one giant file.
-- A build step: GitHub Actions builds the app automatically every time you push to `main` — you never run a build command yourself.
-- Same Firebase project, same Firestore collections (`tickets`, `users`, `publicBoard`), same security rules — nothing to change on the Firebase side.
+**Live app:** https://yunghit.github.io/Biust-Maintenance-Log/
 
-## One-time setup
+---
 
-1. **Push this whole folder to your GitHub repo** (`yunghit/Biust-Maintenance-Log`), replacing what's there now. Keep the folder structure exactly as given — `.github/workflows/deploy.yml` must stay at that exact path for GitHub Actions to find it.
+## Screenshots
 
-2. **Edit `src/firebaseConfig.js`** — paste in your real Firebase config, same as before. This is still the only file with your keys in it.
+| Login | Reporter view |
+|---|---|
+| ![Login screen](screenshots/01-login.png) | ![Reporter's own reports](screenshots/02-reporter-view.png) |
 
-3. **Change your GitHub Pages source.** This is the one required settings change:
-   Settings → Pages → under "Build and deployment" → change **Source** from "Deploy from a branch" to **"GitHub Actions"**.
-   (If you leave it on "Deploy from a branch," your site will keep serving the old raw files instead of the built app.)
+| Maintainer/admin board | Ticket detail |
+|---|---|
+| ![Grouped-by-location board](screenshots/03-staff-board.png) | ![Status update and notes](screenshots/04-ticket-detail.png) |
 
-4. **Push to `main`.** GitHub Actions will automatically install dependencies, build, and deploy — check the **Actions** tab in your repo to watch it run (takes about a minute). Once it's green, your site is live at the same URL as before.
+| Admin — manage |
+|---|
+| ![Add maintainers and export data](screenshots/05-admin-manage.png) |
 
-5. **Firestore rules and Authentication settings are unchanged** — you don't need to touch Firebase console for anything you've already set up.
+*These are illustrative screenshots with sample data, not real student reports — taken from an earlier build. They're now a little out of date (no dark/light toggle, old category list, no Inbox button) — the layout and interaction patterns shown are still accurate, just not every current feature. Ask if you'd like a fresh set.*
 
-## If you ever want to build it yourself locally
+---
 
-You don't have to — GitHub Actions handles it. But if you want to preview changes on your own machine before pushing:
+## What it does
 
-```
-npm install
-npm run dev       # local dev server with hot reload
-npm run build     # produces a dist/ folder, same as what Actions builds
-```
+- **Anyone can report without an account** — a student submits an issue (or pastes/uploads a whole batch at once) with no login required, so casual one-off reporters never end up cluttering the accounts list. It lands in a review queue rather than going straight onto the board.
+- **RAs review before anything becomes official** — the RA for that block sees submissions waiting for them, can edit any field, then accepts (which creates the real ticket, owned by them) or declines. Admin can do this for any block.
+- **Bulk import** — paste a block of text with one issue per line ("F27 lights not working 071..."), or upload a CSV/Excel file, and it's parsed into an editable list before anything is submitted. Built for exactly the "100 issues at once" scenario the old WhatsApp group produced.
+- **Reporters/RAs** log in, submit a ticket directly (location, room, category, description, optional photo, optional urgent flag), and track only their own reports. For a residential block, only that block's assigned RA(s) can report directly — campus facilities stay open to any reporter.
+- **Maintainers** see tickets grouped by location, filter and search, and update status through a deliberate confirm step (not an accidental tap). A maintainer can be scoped to one category — an electrician set to "Electricity" only ever sees electrical tickets.
+- **Supervisors** see the whole board, unfiltered, plus a Summary panel with a per-location breakdown table and Excel export — but can't change any ticket's status.
+- **Admin** does everything above combined, plus creates maintainer/supervisor accounts, sets a maintainer's specialty, and sets which blocks a reporter is RA for.
+- **Anyone**, logged in or not, can check a public read-only status board — useful for a student who reported something to check it's being handled, without needing an account.
+- **Dark and light mode** — a toggle on the login screen and in the app header, remembers your choice.
+- Search finds what you mean, not just exact phrases — "room 20" finds Block F Rm 20 *and* Block D Rm 20; "block f room 20" narrows to just that one.
+- Tickets auto-archive out of the main view 7 days after being marked Done, so the active list stays short.
+- **Semesters** — the board is scoped to a semester (selector on the board). Open tickets from an earlier semester carry over into the next one automatically and are tagged "↪ from S1 26/27"; past semesters stay viewable.
+- **Resolution-time analytics** — average and median time to fix, percent fixed within 48h, averages by category and location, and the longest-waiting open tickets, all in the Summary panel (admin + supervisor).
+- A lightweight notes thread lets a maintainer leave feedback ("bulbs out of stock, ordered more") that the original reporter can see — and every status change logs itself into the same thread automatically, so there's always a record of who did what and when.
+- Brief confirmation toasts after actions ("Ticket submitted," "Status updated") — no more wondering if something actually saved.
+- Installable as a PWA — add it to a phone's home screen and it opens full-screen, no browser bar.
 
-Requires Node.js installed locally (v18 or newer).
+## Categories tracked
+
+Electricity · Plumbing · Carpentry (furniture repairs) · Access/Other · Transport · WiFi · Inventory
+
+## Roles
+
+| Role | Can do |
+|---|---|
+| **Public** (no login) | View a status board (location, room, category, status, description) — no personal details, no editing |
+| **Student** (no login) | Submit a single issue, or bulk-import many at once by pasting text or uploading a CSV — everything goes to a review queue, nothing appears on the board until an RA or admin accepts it |
+| **Reporter/RA** (default on sign-up) | Submit tickets for any campus facility; for a residential block, only if set up as that block's RA. Review, edit, accept, or decline student submissions for their own block(s). View/delete their own tickets while still Pending, add notes to their own |
+| **Maintainer** (admin-created, with a specialty) | View and update the status of tickets in their specialty category only (or all, if set to "All categories"), add notes |
+| **Supervisor** (admin-created) | View every ticket across all categories, read-only — no status changes. Gets the Summary panel and Excel export |
+| **Admin** (one-time manual bootstrap, then self-sustaining) | Everything above combined, plus create maintainer/supervisor accounts, set specialties, set RA block assignments, and accept/decline student submissions for *any* block |
+
+Roles are enforced by Firestore security rules, not just hidden in the UI — a reporter genuinely cannot read someone else's ticket, an electrician-specialty maintainer genuinely cannot read a plumbing ticket, and a reporter who isn't an RA genuinely cannot create a ticket for someone else's block, even by calling Firestore directly.
+
+## Locations tracked
+
+BPC · Blocks 1–6 · Blocks A–F · Sekgoma 1–4 · Fengyue 1–4 · Old/New Main Boys/Girls · Student Center · Admin · Engineering Block · Science Block · Primary · Refectory
+
+## Tech stack
+
+- [React](https://react.dev) + [Vite](https://vite.dev) — component-based, built automatically by GitHub Actions on every push
+- [Firebase Authentication](https://firebase.google.com/docs/auth) — email/password (Microsoft sign-in was built and then removed for now — see the roadmap in DOCUMENTATION.md)
+- [Cloud Firestore](https://firebase.google.com/docs/firestore) — real-time database
+- Hosted free on GitHub Pages, deployed via GitHub Actions (no manual build/upload step)
+- Installable PWA (manifest + service worker)
+- [SheetJS](https://sheetjs.com) for Excel export
 
 ## Project structure
 
 ```
 src/
-  main.jsx                  entry point, service worker registration
-  App.jsx                   top-level layout and state
-  firebase.js                Firebase app/db/auth initialization
-  firebaseConfig.js          <- your Firebase keys go here
-  contexts/AuthContext.jsx   auth state, role, specialty, RA blocks
-  hooks/useTickets.js        the role-aware Firestore subscription
-  utils/constants.js         blocks, categories, statuses, roles
-  utils/helpers.js           small formatting/logic helpers
-  utils/export.js            Excel export
-  components/                one file per UI piece
+  main.jsx, App.jsx           entry point and top-level layout
+  firebase.js                 Firebase app/db/auth initialization
+  firebaseConfig.js           <- your Firebase project's keys go here (edit this, nothing else)
+  contexts/AuthContext.jsx    auth state, role, specialty, RA blocks
+  hooks/useTickets.js         role-aware Firestore subscription
+  utils/                      constants, formatting helpers, Excel export
+  components/                 one file per screen/piece (board, ticket detail, admin panel, etc.)
 public/
-  manifest.json, sw.js, icon-192.png, icon-512.png   PWA assets, copied as-is into the build
-.github/workflows/deploy.yml  the auto-build-and-deploy pipeline
-vite.config.js                build config — note the `base` path matches your repo name
+  manifest.json, sw.js, icon-192.png, icon-512.png   PWA assets
+.github/workflows/deploy.yml  builds and deploys automatically on every push to main
+vite.config.js                build config — base path must match your repo name
 ```
+
+You never run a build command yourself — push to `main` and GitHub Actions builds and deploys it. See [DOCUMENTATION.md](./DOCUMENTATION.md#deployment-github-actions) for how that pipeline works.
+
+## Quickstart
+
+1. Create a Firebase project (free Spark plan) and turn on Firestore + Email/Password sign-in.
+2. Paste your Firebase config into `src/firebaseConfig.js`.
+3. Publish the security rules from [DOCUMENTATION.md](./DOCUMENTATION.md#security-rules).
+4. Push the whole project to a GitHub repo, then in Settings → Pages set **Source** to **GitHub Actions** (not "Deploy from a branch"). Push to `main` and check the Actions tab — it builds and deploys automatically.
+5. Sign up with your own account, then manually set your own role to `admin` in the Firestore console (one-time only — see DOCUMENTATION.md).
+6. From then on, use the in-app **Manage** panel to create maintainer/supervisor accounts and assign RAs to blocks.
+
+Full step-by-step instructions, the complete data model, security rules, troubleshooting, and the roadmap are all in **[DOCUMENTATION.md](./DOCUMENTATION.md)**.

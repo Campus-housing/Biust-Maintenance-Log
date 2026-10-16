@@ -18,6 +18,7 @@ export default function TicketCard({ ticket, onOpen, onOpenPhoto }) {
           <span className="punch"></span>
           <span className="mono ticket-code">{ticket.code || ''}</span>
           {urgentActive && <span className="urgent-tag">🚩 URGENT</span>}
+          {ticket._carriedFrom && <span className="dim mono" style={{ fontSize: 10 }}>↪ from {ticket._carriedFrom}</span>}
         </div>
         <div className="ticket-top-right">
           {ticket.photo && (
