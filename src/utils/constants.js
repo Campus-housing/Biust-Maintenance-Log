@@ -63,3 +63,52 @@ export const SEMESTERS = [
   { id: '2026-27-S1', label: '2026/27 · Semester 1', short: 'S1 26/27', start: '2026-08-01' },
   { id: '2026-27-S2', label: '2026/27 · Semester 2', short: 'S2 26/27', start: '2027-02-01' },
 ];
+
+// Quick-pick wording for common problems per category (electricity/plumbing/carpentry/inventory come from the
+// legacy tracker's own lists). Tapping one fills the description; staff can still type anything.
+export const COMMON_ISSUES = {
+  "electricity": [
+    "Main light not working",
+    "Sockets not working",
+    "Study lamp not working",
+    "Fan not working",
+    "No fan knob",
+    "Faulty main light switch",
+    "Faulty study lamp switch",
+    "Damaged sockets"
+  ],
+  "plumbing": [
+    "Blocked showers",
+    "Low pressure in toilets",
+    "Sink tap leaking",
+    "Sink basin blocked",
+    "Laundry room tap leaking",
+    "Laundry room sink blocked"
+  ],
+  "furniture": [
+    "Malfunctioning door lock",
+    "Wardrobe door detached",
+    "Study table door detached"
+  ],
+  "inventory": [
+    "Chairs missing",
+    "Table missing"
+  ],
+  "wifi": [
+    "No internet in the room",
+    "Router not working",
+    "Very weak signal"
+  ],
+  "access": [
+    "Door lock jammed",
+    "Key not working",
+    "Cannot get into the room"
+  ],
+  "transport": [
+    "Shuttle late or not running",
+    "Vehicle breakdown"
+  ]
+};
+
+// For issues that aren't in a numbered room — fills the room field.
+export const COMMON_AREAS = ['Kitchen', 'Laundry', 'Ablution', 'Passage', 'Outside'];

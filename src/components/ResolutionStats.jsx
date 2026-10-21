@@ -1,6 +1,10 @@
 import { CATEGORIES } from '../utils/constants';
-import { resolutionMs, formatDuration, average, median } from '../utils/helpers';
+import {
+  resolutionMs, formatDuration, average, median, SPEED_BANDS, speedBand, monthKey, monthLabel,
+  blockLabel, roomLabel, ageColor, formatAge,
+} from '../utils/helpers';
 import BarChart from './BarChart';
+import TrendChart from './TrendChart';
 
 const HOUR = 3600000;
 const MAX_ROWS = 8;
@@ -15,7 +19,7 @@ function groupAverages(resolved, keyFn) {
   return [...groups.entries()].map(([label, list]) => ({ label, avg: average(list), count: list.length }));
 }
 
-export default function ResolutionStats({ tickets }) {
+export default function ResolutionStats({ tickets, hideLocation = false, openLimit = 5 }) {
   const resolved = tickets
     .map((t) => ({ t, ms: resolutionMs(t) }))
     .filter((r) => r.ms !== null);
@@ -25,6 +29,15 @@ export default function ResolutionStats({ tickets }) {
   const overallMedian = median(times);
   const within48 = times.length ? Math.round((times.filter((ms) => ms <= 48 * HOUR).length / times.length) * 100) : null;
 
+  // Speed bands (same cut-offs the old tracker used): how many were fixed fast vs slowly.
+  const bandCounts = SPEED_BANDS.map((b) => ({ ...b, count: times.filter((ms) => speedBand(ms).id === b.id).length }));
+  const bandData = bandCounts.map((b) => ({
+    label: b.label + ' (' + b.hint + ')',
+    value: b.count,
+    display: b.count + (times.length ? ' · ' + Math.round((b.count / times.length) * 100) + '%' : ''),
+    color: b.color,
+  }));
+
   const byCategory = groupAverages(resolved, (t) => (CATEGORIES.find((c) => c.id === t.category) || { label: 'Other' }).label)
     .sort((a, b) => b.avg - a.avg)
     .map((g) => ({ label: g.label + ' (' + g.count + ')', value: g.avg, display: formatDuration(g.avg), color: '#F2A93C' }));
@@ -32,7 +45,18 @@ export default function ResolutionStats({ tickets }) {
   const byLocation = groupAverages(resolved, (t) => t.block)
     .sort((a, b) => b.avg - a.avg)
     .slice(0, MAX_ROWS)
-    .map((g) => ({ label: g.label + ' (' + g.count + ')', value: g.avg, display: formatDuration(g.avg), color: '#5B9BD5' }));
+    .map((g) => ({ label: blockLabel(g.label) + ' (' + g.count + ')', value: g.avg, display: formatDuration(g.avg), color: '#5B9BD5' }));
+
+  // Monthly trends, by the month a ticket was reported.
+  const volumeByMonth = new Map();
+  tickets.forEach((t) => { const k = monthKey(t.reportedAt); if (k) volumeByMonth.set(k, (volumeByMonth.get(k) || 0) + 1); });
+  const resolutionByMonth = new Map();
+  resolved.forEach((r) => { const k = monthKey(r.t.reportedAt); if (!resolutionByMonth.has(k)) resolutionByMonth.set(k, []); resolutionByMonth.get(k).push(r.ms); });
+  const volumeTrend = [...volumeByMonth.keys()].sort().map((k) => ({ label: monthLabel(k), value: volumeByMonth.get(k) }));
+  const resolutionTrend = [...resolutionByMonth.keys()].sort().map((k) => {
+    const avg = average(resolutionByMonth.get(k));
+    return { label: monthLabel(k), value: avg / HOUR, display: formatAge(avg) };
+  });
 
   const now = Date.now();
   const oldestOpen = tickets
@@ -40,7 +64,7 @@ export default function ResolutionStats({ tickets }) {
     .map((t) => ({ t, age: now - new Date(t.reportedAt).getTime() }))
     .filter((r) => Number.isFinite(r.age) && r.age >= 0)
     .sort((a, b) => b.age - a.age)
-    .slice(0, 5);
+    .slice(0, openLimit);
 
   return (
     <div>
@@ -66,11 +90,31 @@ export default function ResolutionStats({ tickets }) {
           </div>
           <p className="dim" style={{ fontSize: 10, margin: '0 0 12px' }}>Based on {resolved.length} resolved {resolved.length === 1 ? 'ticket' : 'tickets'}.</p>
 
+          <label className="field-label">How fast problems get fixed</label>
+          <div style={{ marginTop: 8, marginBottom: 14 }}><BarChart data={bandData} /></div>
+
           <label className="field-label">Average by category (slowest first)</label>
           <div style={{ marginTop: 8, marginBottom: 14 }}><BarChart data={byCategory} /></div>
 
-          <label className="field-label">Average by location (slowest {Math.min(MAX_ROWS, byLocation.length)})</label>
-          <div style={{ marginTop: 8, marginBottom: 14 }}><BarChart data={byLocation} /></div>
+          {!hideLocation && (
+            <>
+              <label className="field-label">Average by location (slowest {Math.min(MAX_ROWS, byLocation.length)})</label>
+              <div style={{ marginTop: 8, marginBottom: 14 }}><BarChart data={byLocation} /></div>
+            </>
+          )}
+        </>
+      )}
+
+      {volumeTrend.length > 0 && (
+        <>
+          <label className="field-label">Reports per month</label>
+          <div style={{ marginTop: 6, marginBottom: 14 }}><TrendChart data={volumeTrend} color="#5B9BD5" /></div>
+        </>
+      )}
+      {resolutionTrend.length > 0 && (
+        <>
+          <label className="field-label">Average time to fix, by month reported</label>
+          <div style={{ marginTop: 6, marginBottom: 14 }}><TrendChart data={resolutionTrend} color="#F2A93C" /></div>
         </>
       )}
 
@@ -82,10 +126,10 @@ export default function ResolutionStats({ tickets }) {
           oldestOpen.map(({ t, age }) => (
             <div key={t.id} className="user-row" style={{ cursor: 'default', borderBottom: '1px solid var(--border)' }}>
               <span>
-                <strong>{t.block} · Rm {t.room}</strong>
+                <strong>{blockLabel(t.block)} · {roomLabel(t.room)}</strong>
                 <br /><span className="dim" style={{ fontSize: 11 }}>{t.description}</span>
               </span>
-              <span className="mono" style={{ fontSize: 11, color: age > 7 * 24 * HOUR ? '#E15554' : 'var(--muted)' }}>{formatDuration(age)}</span>
+              <span className="mono" style={{ fontSize: 11, color: ageColor(age) }}>{formatDuration(age)}</span>
             </div>
           ))
         )}

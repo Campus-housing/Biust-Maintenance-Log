@@ -3,6 +3,9 @@ import { addDoc } from 'firebase/firestore';
 import { submissionsCol } from '../firebase';
 import { BLOCK_GROUPS, CATEGORIES } from '../utils/constants';
 import { parseIssueText, parseIssueFile } from '../utils/parseIssues';
+import RoomField from './RoomField';
+import AreaChips from './AreaChips';
+import IssueChips from './IssueChips';
 
 function newSubmissionBase() {
   return { submittedAt: new Date().toISOString(), status: 'pending' };
@@ -57,8 +60,8 @@ export default function SubmissionForm({ onClose }) {
   }
 
   async function submitSingle() {
-    if (!block || !room.trim() || !description.trim()) {
-      setError('Please add a location, room number, and a description.');
+    if (!block || !description.trim()) {
+      setError('Please add a location and a description (room can be left blank for general areas).');
       return;
     }
     setError(''); setSaving(true);
@@ -105,23 +108,30 @@ export default function SubmissionForm({ onClose }) {
 
   async function submitAllDrafts() {
     if (!drafts || drafts.length === 0) return;
+    const incomplete = drafts.filter((d) => !d.location || !(d.description || '').trim()).length;
+    if (incomplete > 0) {
+      setError(incomplete + (incomplete === 1 ? ' row still needs' : ' rows still need') + ' a location — choose one, or remove the row. Nothing has been sent yet.');
+      return;
+    }
     setError(''); setSaving(true);
-    let count = 0;
+    const sent = new Set();
     try {
-      for (const d of drafts) {
-        if (!d.location || !d.room || !d.description) continue; // skip incomplete rows silently, they stay in the list
+      for (let i = 0; i < drafts.length; i++) {
+        const d = drafts[i];
         // eslint-disable-next-line no-await-in-loop
         await addDoc(submissionsCol, {
           ...newSubmissionBase(),
-          block: d.location, room: d.room, category: d.category || 'access', description: d.description,
+          block: d.location, room: (d.room || '').trim(), category: d.category || 'access', description: d.description.trim(),
           reportedBy: '', contact: d.contact || '', urgent: !!d.urgent, photo: null, rawText: d.rawText || '',
         });
-        count++;
+        sent.add(i);
       }
-      setDone(count);
+      setDone(sent.size);
     } catch (e) {
       console.error(e);
-      setError('Some reports may not have saved — check your connection and try again.');
+      // keep only what didn't go through, so retrying never creates duplicates
+      setDrafts((ds) => ds.filter((_, idx) => !sent.has(idx)));
+      setError(sent.size + ' of ' + drafts.length + ' were sent. The rest are still listed below — try again.');
     } finally {
       setSaving(false);
     }
@@ -177,11 +187,9 @@ export default function SubmissionForm({ onClose }) {
                   ))}
                 </select>
               </div>
-              <div>
-                <label className="field-label">Room</label>
-                <input className="input" placeholder="e.g. 17" value={room} onChange={(e) => setRoom(e.target.value)} />
-              </div>
+              <RoomField block={block} value={room} onChange={setRoom} />
             </div>
+            <AreaChips value={room} onPick={setRoom} />
             <div>
               <label className="field-label">Category</label>
               <div className="cat-grid">
@@ -199,6 +207,7 @@ export default function SubmissionForm({ onClose }) {
             </div>
             <div>
               <label className="field-label">What's wrong?</label>
+              <IssueChips category={category} onPick={(t) => setDescription((d) => (!d.trim() ? t : d.includes(t) ? d : d.replace(/[;\s]+$/, '') + '; ' + t))} />
               <textarea className="input" rows={2} placeholder="e.g. sockets not working" value={description} onChange={(e) => setDescription(e.target.value)} style={{ marginBottom: 12 }} />
             </div>
             <div className="form-grid-2">
@@ -276,10 +285,7 @@ export default function SubmissionForm({ onClose }) {
                           ))}
                         </select>
                       </div>
-                      <div>
-                        <label className="field-label">Room</label>
-                        <input className="input" value={d.room} onChange={(e) => updateDraft(i, { room: e.target.value })} />
-                      </div>
+                      <RoomField block={d.location} value={d.room || ''} onChange={(v) => updateDraft(i, { room: v })} />
                     </div>
                     <label className="field-label">Description</label>
                     <textarea className="input" rows={2} style={{ marginBottom: 8 }} value={d.description} onChange={(e) => updateDraft(i, { description: e.target.value })} />

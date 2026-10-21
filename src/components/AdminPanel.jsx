@@ -5,7 +5,7 @@ import { secondaryAuth, usersCol, db } from '../firebase';
 import { useAuth } from '../contexts/AuthContext';
 import { useToast } from '../contexts/ToastContext';
 import { SPECIALTIES, ROLE_OPTIONS, RESIDENTIAL_BLOCKS } from '../utils/constants';
-import { specialtyLabel, friendlyAuthError } from '../utils/helpers';
+import { specialtyLabel, friendlyAuthError, blockLabel } from '../utils/helpers';
 
 const ROLE_LABEL_MAP = Object.fromEntries(ROLE_OPTIONS.map((r) => [r.id, r.label]));
 
@@ -258,6 +258,37 @@ export default function AdminPanel({ onClose }) {
             <button type="button" className="submit-btn" style={{ background: '#5B9BD5', marginBottom: 16 }} onClick={handleCopy}>{copyLabel}</button>
           </>
         )}
+
+        <div className="dash" style={{ marginBottom: 12 }}></div>
+        <label className="field-label">RA coverage — who looks after each residence</label>
+        {(() => {
+          const ras = users.filter((u) => u.role === 'reporter' && Array.isArray(u.assignedBlocks));
+          const rows = RESIDENTIAL_BLOCKS.map((b) => ({ b, names: ras.filter((u) => u.assignedBlocks.includes(b)).map((u) => u.name || u.email) }));
+          const uncovered = rows.filter((r) => !r.names.length);
+          return (
+            <div style={{ marginTop: 8, marginBottom: 16 }}>
+              {usersLoading ? <span className="dim" style={{ fontSize: 12 }}>Loading…</span> : (
+                <>
+                  <p style={{ fontSize: 12, margin: '0 0 8px', color: uncovered.length ? '#F2A93C' : '#4FB477' }}>
+                    {RESIDENTIAL_BLOCKS.length - uncovered.length} of {RESIDENTIAL_BLOCKS.length} residences have an RA
+                    {uncovered.length ? ' — without one: ' + uncovered.map((r) => blockLabel(r.b)).join(', ') : ''}
+                  </p>
+                  <details>
+                    <summary className="dim" style={{ fontSize: 11, cursor: 'pointer' }}>Show every residence</summary>
+                    <div style={{ marginTop: 6 }}>
+                      {rows.map((r) => (
+                        <div key={r.b} style={{ display: 'flex', justifyContent: 'space-between', gap: 10, fontSize: 12, padding: '4px 0', borderBottom: '1px solid var(--border)' }}>
+                          <strong>{blockLabel(r.b)}</strong>
+                          <span style={{ textAlign: 'right', color: r.names.length ? 'var(--muted)' : '#E15554' }}>{r.names.length ? r.names.join(', ') : 'no RA yet'}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </details>
+                </>
+              )}
+            </div>
+          );
+        })()}
 
         <div className="dash" style={{ marginBottom: 12 }}></div>
         <label className="field-label">All accounts — tap any account to change their role, specialty, or RA block(s)</label>

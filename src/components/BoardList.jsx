@@ -1,10 +1,13 @@
-import { useMemo, useState } from 'react';
-import { BLOCKS } from '../utils/constants';
-import { isArchived, ticketMatchesSearch } from '../utils/helpers';
+import { useEffect, useMemo, useState } from 'react';
+import { BLOCKS, RESIDENTIAL_BLOCKS, FACILITIES_GROUP } from '../utils/constants';
+import { isArchived, ticketMatchesSearch, blockLabel } from '../utils/helpers';
 import TicketCard from './TicketCard';
 
+const FACILITY_NAMES = FACILITIES_GROUP ? FACILITIES_GROUP.options : [];
+
 export default function BoardList({ tickets, loading, search, filterStatus, filterCategory, filterUrgent, onOpen, onOpenPhoto }) {
-  const [collapsedBlocks, setCollapsedBlocks] = useState(() => new Set());
+  const [openSections, setOpenSections] = useState(() => new Set());
+  const [openLocations, setOpenLocations] = useState(() => new Set());
 
   const filtered = useMemo(() => {
     return tickets
@@ -26,6 +29,45 @@ export default function BoardList({ tickets, loading, search, filterStatus, filt
       });
   }, [tickets, search, filterStatus, filterCategory, filterUrgent]);
 
+  const byBlock = useMemo(() => {
+    const m = new Map();
+    filtered.forEach((t) => {
+      if (!m.has(t.block)) m.set(t.block, []);
+      m.get(t.block).push(t);
+    });
+    return m;
+  }, [filtered]);
+
+  const sections = useMemo(() => {
+    const extras = [...byBlock.keys()].filter((b) => !BLOCKS.includes(b)).sort();
+    const defs = [
+      { key: 'residences', label: 'Residences', icon: '🏠', names: RESIDENTIAL_BLOCKS },
+      { key: 'facilities', label: 'Campus facilities', icon: '🏛️', names: FACILITY_NAMES },
+    ];
+    if (extras.length) defs.push({ key: 'other', label: 'Other locations', icon: '📍', names: extras });
+    return defs.map((s) => {
+      const urgentOf = (n) => (byBlock.get(n) || []).filter((t) => t.urgent && t.status !== 'done').length;
+      const withReports = s.names
+        .filter((n) => byBlock.has(n))
+        .sort((a, b) => urgentOf(b) - urgentOf(a) || byBlock.get(b).length - byBlock.get(a).length || s.names.indexOf(a) - s.names.indexOf(b));
+      return {
+        ...s,
+        withReports,
+        empty: s.names.filter((n) => !byBlock.has(n)),
+        total: withReports.reduce((n, b) => n + byBlock.get(b).length, 0),
+        urgent: withReports.reduce((n, b) => n + urgentOf(b), 0),
+      };
+    });
+  }, [byBlock]);
+
+  // While searching, open everything that has a match so results are never hidden behind a closed menu.
+  useEffect(() => {
+    if (!search.trim()) return;
+    setOpenSections(new Set(sections.filter((s) => s.withReports.length).map((s) => s.key)));
+    setOpenLocations(new Set(byBlock.keys()));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [search]);
+
   if (loading) {
     return <div className="loading-wrap"><div className="spinner"></div></div>;
   }
@@ -33,46 +75,64 @@ export default function BoardList({ tickets, loading, search, filterStatus, filt
     return <div className="empty-card">{tickets.length === 0 ? 'No issues logged yet.' : 'Nothing matches these filters.'}</div>;
   }
 
-  const byBlock = new Map();
-  filtered.forEach((t) => {
-    if (!byBlock.has(t.block)) byBlock.set(t.block, []);
-    byBlock.get(t.block).push(t);
+  const flip = (setter, key) => setter((prev) => {
+    const next = new Set(prev);
+    if (next.has(key)) next.delete(key); else next.add(key);
+    return next;
   });
-  const knownOrder = BLOCKS.filter((b) => byBlock.has(b));
-  const extras = [...byBlock.keys()].filter((b) => !BLOCKS.includes(b)).sort();
-  const orderedBlockNames = knownOrder.concat(extras);
-
-  function toggle(block) {
-    setCollapsedBlocks((prev) => {
-      const next = new Set(prev);
-      if (next.has(block)) next.delete(block); else next.add(block);
-      return next;
-    });
-  }
 
   return (
     <div>
-      {orderedBlockNames.map((block) => {
-        const group = byBlock.get(block);
-        const collapsed = collapsedBlocks.has(block);
-        const urgentInGroup = group.some((t) => t.urgent && t.status !== 'done');
-        return (
-          <div key={block} className="block-group">
-            <button type="button" className="block-group-header" onClick={() => toggle(block)}>
-              <span className="block-group-title">{urgentInGroup ? '🚩 ' : ''}{block}</span>
-              <span className="block-group-count">{group.length}</span>
-              <span className="block-group-chevron">{collapsed ? '▸' : '▾'}</span>
-            </button>
-            {!collapsed && (
-              <div className="block-group-body">
-                {group.map((t) => (
-                  <TicketCard key={t.id} ticket={t} onOpen={onOpen} onOpenPhoto={onOpenPhoto} />
-                ))}
+      <div className="section-tiles" style={sections.length > 2 ? { gridTemplateColumns: '1fr 1fr 1fr' } : undefined}>
+        {sections.map((s) => (
+          <button
+            key={s.key} type="button"
+            className={'section-tile' + (openSections.has(s.key) ? ' section-tile-active' : '')}
+            onClick={() => flip(setOpenSections, s.key)}
+            aria-expanded={openSections.has(s.key)}
+          >
+            <span className="section-tile-title">
+              <span>{s.icon} {s.label}</span>
+              <span className="block-group-chevron">{openSections.has(s.key) ? '▾' : '▸'}</span>
+            </span>
+            <span className="section-tile-sub">
+              {s.total} {s.total === 1 ? 'report' : 'reports'}{s.withReports.length ? ' · ' + s.withReports.length + (s.withReports.length === 1 ? ' place' : ' places') : ''}
+            </span>
+            {s.urgent > 0 && <span className="section-tile-sub" style={{ color: '#E15554' }}>🚩 {s.urgent} urgent</span>}
+          </button>
+        ))}
+      </div>
+
+      {sections.filter((s) => openSections.has(s.key)).map((s) => (
+        <div key={s.key} className="section-panel">
+          <div className="section-panel-label">{s.label}</div>
+          {s.withReports.length === 0 && <div className="empty-card" style={{ padding: 14 }}>No reports here.</div>}
+          {s.withReports.map((block) => {
+            const group = byBlock.get(block);
+            const open = openLocations.has(block);
+            const urgentInGroup = group.some((t) => t.urgent && t.status !== 'done');
+            return (
+              <div key={block} className="block-group">
+                <button type="button" className="block-group-header" onClick={() => flip(setOpenLocations, block)} aria-expanded={open}>
+                  <span className="block-group-title">{urgentInGroup ? '🚩 ' : ''}{blockLabel(block)}</span>
+                  <span className="block-group-count">{group.length}</span>
+                  <span className="block-group-chevron">{open ? '▾' : '▸'}</span>
+                </button>
+                {open && (
+                  <div className="block-group-body">
+                    {group.map((t) => (
+                      <TicketCard key={t.id} ticket={t} onOpen={onOpen} onOpenPhoto={onOpenPhoto} />
+                    ))}
+                  </div>
+                )}
               </div>
-            )}
-          </div>
-        );
-      })}
+            );
+          })}
+          {s.empty.length > 0 && (
+            <div className="empty-locations">No reports: {s.empty.map(blockLabel).join(' · ')}</div>
+          )}
+        </div>
+      ))}
     </div>
   );
 }

@@ -15,6 +15,9 @@ Full technical reference for the BIUST Maintenance & Facilities Log. See [README
 - [Dark/light mode](#darklight-mode)
 - [Semesters](#semesters)
 - [Resolution analytics](#resolution-analytics)
+- [The board (dashboard)](#the-board-dashboard)
+- [Rooms, common areas and quick picks](#rooms-common-areas-and-quick-picks)
+- [Importing the legacy tracker](#importing-the-legacy-tracker)
 - [Microsoft (Azure AD) sign-in — removed for now](#microsoft-azure-ad-sign-in--removed-for-now)
 - [Installing as an app (PWA)](#installing-as-an-app-pwa)
 - [Adding staff and setting up RAs](#adding-staff-and-setting-up-ras)
@@ -118,6 +121,7 @@ npm run build   # same build Actions runs, output in dist/
 | `notes` | array | `{ text, byName, byRole, at, isSystem? }` objects, appended via `arrayUnion`. Status changes append one of these automatically (`isSystem: true`), shown in italics, alongside anything a person types |
 | `semester` | string | Id of the semester the ticket was created in (e.g. `2026-27-S1`), stamped at creation. Older tickets without it are placed by their `reportedAt` date |
 | `acceptedAt` | ISO string | Only on tickets created by accepting a student submission — when the RA/admin accepted it. For those tickets `reportedAt` is the *original* submission time, so resolution times measure what the student actually experienced |
+| `importedFrom` / `legacyRef` | string | Only on tickets imported from the old tracker: `legacy-tracker` and the sheet/row they came from (the original `C-###` id is the ticket `code`) |
 
 ### `users/{uid}`
 
@@ -306,7 +310,46 @@ In the Summary panel (admin + supervisor), scoped to the selected semester:
 - **Longest-waiting open tickets** — the five oldest unresolved tickets, in red once past a week.
 - The Excel export has a `Resolution (hours)` column.
 
+- **KPI row** (Total, Open, Closed, Avg fix) at the top of the Summary.
+- **Speed bands** — how many fixes were Fast (≤2 days), Normal (3–5), Slow (6–10) or Critical (11+), with counts and percentages (the same bands the old tracker used).
+- **Monthly trends** — reports per month, and average time to fix by the month reported.
+- **View selector** — scope the whole Summary to one location: its KPIs, category pie, bands, trends, up to 15 longest-waiting open tickets, and that location's RA(s) (or "No RA assigned yet" in red).
+- **RA coverage** (Manage panel) lists which of the 25 residences have an RA, and which have none.
+
 Notes: a ticket that is reopened loses its `resolvedAt` and drops out of the averages until it is resolved again. The by-category pie and by-location bars count only *active* (non-archived) tickets, whereas resolution times include all resolved tickets, archived or not.
+
+## The board (dashboard)
+
+The board opens as two tiles — **Residences** and **Campus facilities** — each showing its report count, number of places with reports, and an urgent flag. Tapping a tile opens a menu of its places (reports-first, urgent and busiest first; places with nothing are listed in one muted line underneath). Tapping a place opens its reports. Nothing is rendered until opened, so it stays fast with hundreds of tickets.
+
+- Searching opens every section and place that has a match, so results are never hidden behind a closed menu.
+- The four status tiles above are filters: tap *Pending* to see only pending, tap again to clear (the status chips below stay in sync).
+- Locations read "Block 4", "Block C", "BPC", "Fengyue 3" (internal ids stay `4`, `C`, …). Rooms read "Rm 17" / "Rm F27"; a blank room reads "Common area", and a named area ("Kitchen", "Ablution-R47") is shown as written.
+- Every open ticket shows "⏱ open 24d", grey up to 2 days, amber to 5, red beyond.
+
+## Rooms, common areas and quick picks
+
+- **Room is optional.** Kitchens, laundries, ablutions, passages and outdoor areas have no room number. Leave it blank or tap a chip (Kitchen · Laundry · Ablution · Passage · Outside).
+- **Room autocomplete** (`src/utils/rooms.js`) offers the valid rooms and named common areas for the chosen location, taken from the legacy tracker's validation lists (25 residences). It is a suggestion only — anything typed is accepted. Campus facilities have no list.
+- **Common-issue chips** (`COMMON_ISSUES` in `constants.js`) fill the description with one tap per usual problem in the chosen category; electricity, plumbing, carpentry and inventory come from the tracker's own lists. Tapping several joins them with "; ".
+- Bulk import: a bare code such as `F27` or `S3` becomes the **room** (`S3` → `S03` to match the lists) and the location is left for the reviewer. A location is only filled in when the text names one ("BPC", "Block 4", "Old Sekgoma 3", "Fengyue 2"). Rows still missing a location block the submit with a message instead of being dropped.
+
+## Importing the legacy tracker
+
+`tools/import-legacy/` imports a spreadsheet of past calls as tickets, keeping the original dates, statuses and ids. It was written against, and dry-run on, the real *BIUST Campus Housing Maintenance Tracker.xlsx* (328 calls, all Semester 1).
+
+```
+node tools/import-legacy/inspect.mjs <file.xlsx>          # shows sheets, columns and how each maps
+node tools/import-legacy/import.mjs  <file.xlsx>          # DRY RUN: full report, writes nothing
+node tools/import-legacy/import.mjs  <file.xlsx> --commit --service-account <key.json> --admin-uid <uid>
+```
+
+- The dry run reports tickets by status/category/semester/location, resolution times recomputed from the dates, longest-waiting open calls, skipped rows with reasons, unmapped locations, rows that need a look, and possible duplicates.
+- Only sheets that have a header **and** a reported-date column are read, so dashboard sheets are never imported as data. Column names are matched flexibly (`FIELD_ALIASES` in `lib.mjs`); location aliases live in `aliases.tracker.json` ("Old Sekgoma 3" → "Sekgoma 3").
+- `--commit` uses the Firebase **Admin SDK** with a service-account key (Firebase console → Project settings → Service accounts; never commit it; `npm install firebase-admin` inside the folder first). It bypasses the security rules — needed because the client rules only allow creating `pending` tickets. Documents have fixed ids (`legacy-c001`), so re-running overwrites rather than duplicates. It also writes the `publicBoard` mirror.
+- Dates are read day-first (`--month-first` to change). The sheet's own "Resolution Time" column is ignored (it mixes units).
+- **The commit path has not been run against a real Firebase project** — only the dry run is tested. Try it on a throwaway project or the emulator first.
+- The spreadsheet contains personal data (contact numbers): keep it out of git (`legacy-data/` and `*.service-account.json` are git-ignored).
 
 ## Microsoft (Azure AD) sign-in — removed for now
 

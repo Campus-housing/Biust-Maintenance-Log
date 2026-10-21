@@ -24,6 +24,15 @@ It's a React app (Vite build, auto-deployed by GitHub Actions) backed by Firebas
 
 *These are illustrative screenshots with sample data, not real student reports — taken from an earlier build. They're now a little out of date (no dark/light toggle, old category list, no Inbox button) — the layout and interaction patterns shown are still accurate, just not every current feature. Ask if you'd like a fresh set.*
 
+**Current dashboard and summary** (sample data):
+
+![Dashboard, collapsed](screenshots/01-dashboard-collapsed.png)
+![Dashboard, a place opened](screenshots/02-dashboard-expanded.png)
+![Summary analytics](screenshots/03-summary-analytics.png)
+![Single-block view with its RA](screenshots/04-summary-block-drilldown.png)
+![Semester 2 with carried-over ticket](screenshots/05-board-s2-carryover.png)
+
+
 ---
 
 ## What it does
@@ -41,6 +50,9 @@ It's a React app (Vite build, auto-deployed by GitHub Actions) backed by Firebas
 - Tickets auto-archive out of the main view 7 days after being marked Done, so the active list stays short.
 - **Semesters** — the board is scoped to a semester (selector on the board). Open tickets from an earlier semester carry over into the next one automatically and are tagged "↪ from S1 26/27"; past semesters stay viewable.
 - **Resolution-time analytics** — average and median time to fix, percent fixed within 48h, averages by category and location, and the longest-waiting open tickets, all in the Summary panel (admin + supervisor).
+- **A dashboard that opens as two tiles** — *Residences* and *Campus facilities*. Tap one to see its places with report counts (urgent ones flagged); tap a place to see its reports. Searching opens whatever matches automatically; the status tiles (Pending, In progress, …) are tappable filters.
+- **Built to replace the SharePoint tracker, feature for feature** — room autocomplete from the tracker's own per-block lists (and blank/common-area rooms), one-tap common-issue wording, live "open 24d" ageing on every open ticket, speed bands, monthly trends, a per-location view with that location's RA, and an RA-coverage panel for admins. See `docs/TRACKER-PARITY.md`.
+- **Import the old tracker** with a dry-run-first script (`tools/import-legacy/`) that keeps the original dates, statuses and `C-###` ids.
 - A lightweight notes thread lets a maintainer leave feedback ("bulbs out of stock, ordered more") that the original reporter can see — and every status change logs itself into the same thread automatically, so there's always a record of who did what and when.
 - Brief confirmation toasts after actions ("Ticket submitted," "Status updated") — no more wondering if something actually saved.
 - Installable as a PWA — add it to a phone's home screen and it opens full-screen, no browser bar.

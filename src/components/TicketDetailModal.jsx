@@ -4,7 +4,7 @@ import { db } from '../firebase';
 import { useAuth } from '../contexts/AuthContext';
 import { useToast } from '../contexts/ToastContext';
 import { STATUSES } from '../utils/constants';
-import { categoryMeta, statusMeta, formatDate } from '../utils/helpers';
+import { categoryMeta, statusMeta, formatDate, blockLabel, roomLabel, openAgeMs, formatAge } from '../utils/helpers';
 
 export default function TicketDetailModal({ ticket, onClose, onOpenPhoto }) {
   const { currentUser, name, role, canManageTickets } = useAuth();
@@ -92,7 +92,7 @@ export default function TicketDetailModal({ ticket, onClose, onOpenPhoto }) {
         </div>
 
         {urgentActive && <div className="urgent-tag" style={{ marginBottom: 8 }}>🚩 URGENT</div>}
-        <div className="ticket-title display" style={{ padding: '0 0 8px' }}>{ticket.block} · Rm {ticket.room}</div>
+        <div className="ticket-title display" style={{ padding: '0 0 8px' }}>{blockLabel(ticket.block)} · {roomLabel(ticket.room)}{openAgeMs(ticket) != null && <span className="dim mono" style={{ fontSize: 11, marginLeft: 8 }}>open {formatAge(openAgeMs(ticket))}</span>}</div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 6, color: 'var(--muted)', fontSize: 13, marginBottom: 12 }}>
           {cat.icon} {cat.label}
         </div>

@@ -81,6 +81,17 @@ This round shipped without a live build check — the npm registry was blocked i
 - **Docs fix.** An earlier docs edit had accidentally deleted the "Microsoft sign-in — removed for now" heading in DOCUMENTATION.md; restored.
 - **Verification.** npm was reachable again, so this round was actually built (64 modules, no errors), linted (0 errors; 13 warnings repo-wide, 7 in `src/`), and exercised by a new headless smoke test with fake Firebase (9/9 checks: semester selector, analytics maths, carry-over into Semester 2, no page errors). This also retroactively confirms that the earlier unverified rounds (themes, toasts, submissions, bulk import, charts) compile. The handover zip itself was then re-verified from a clean extraction (`npm ci`, build, lint, smoke). `npm audit` reports 5 high-severity advisories (chiefly `xlsx`), recorded in HANDOVER.md.
 
+## v12 — Built to replace the SharePoint tracker
+
+The owner shared the real tracker; it was read in full (formulas, dropdown validations, all six charts) and compared against the app feature by feature (`docs/TRACKER-PARITY.md`). Result: every function has an equivalent, and the gaps that existed were closed.
+
+- **New dashboard.** The board opens as two tiles, *Residences* and *Campus facilities*; each opens a menu of its places with counts, and each place opens its reports. Searching auto-opens matches. The status tiles are now tappable filters. Locations read "Block 4"; blank rooms read "Common area".
+- **Closed the tracker gaps.** Room is optional with one-tap common-area chips; room autocomplete per location (from the tracker's own lists); one-tap common-issue wording per category; live "⏱ open 24d" ageing on open tickets; Days Open in the export.
+- **Analytics parity and beyond.** Summary gained a KPI row, speed bands (Fast/Normal/Slow/Critical), monthly volume and resolution trends, and a per-location view with that location's RA(s). Admins get an RA-coverage panel (the tracker itself has no RA for Block E).
+- **Legacy importer** (`tools/import-legacy/`): inspect + dry-run-first import preserving original dates, statuses and `C-###` ids. Dry run on the real file: 328 calls, 86 closed / 242 open, average 19.9 days to fix, all Semester 1. The `--commit` path is untested against real Firebase.
+- **Two bugs in my own earlier work, found and fixed.** (1) Bulk import silently dropped any row missing a location or room and then showed a "Thanks!" screen — those reports were lost; now it refuses to submit until every row has a location, and keeps unsent rows after a partial failure so retries never duplicate. (2) The text parser turned a code like `F27` into the location "F", which is a real block (Block F) — but in the tracker `F27` is a floor code inside Old Main Boys, so reports would have been misfiled. A bare code is now a room and the location is left for the reviewer.
+- **Verification:** build 69 modules, 0 errors; lint 0 errors (16 warnings repo-wide, 7 in `src/`); smoke test extended to 26 checks (dashboard drop-downs, search auto-open, status tiles, blank-room ticket, KPIs, bands, trends, drill-down with RA, semesters), all passing.
+
 ## How the app has improved
 
 | | v1 (Claude artifact) | Now |
@@ -97,6 +108,7 @@ This round shipped without a live build check — the npm registry was blocked i
 | Record-keeping | None | Excel export, 7-day auto-archive, full audit trail in Firestore |
 | Look and feel | Fixed dark theme | Dark/light toggle, confirmation toasts |
 | Reporting on performance | None | Resolution-time analytics, semester views with automatic carry-over |
+| Replacing the SharePoint tracker | — | Every tracker function covered (docs/TRACKER-PARITY.md) + importer for its history |
 | Setup | N/A | One README + one DOCUMENTATION.md, step by step |
 
 ## Where to take it next
@@ -110,7 +122,7 @@ Roughly in order of what's likely to matter first — the full detail on each is
 5. **Refine the RA model** if it turns out a block needs a "primary" RA versus backups, or if RA assignment ever needs its own audit trail.
 6. **Use the React migration to add real polish** — smoother transitions, drag-and-drop, whatever comes to mind — now that the codebase is structured for it instead of one long file of manual DOM updates.
 7. **Regenerate the README screenshots** — they still show the pre-v9 app (old categories, no theme toggle, no Inbox). The smoke-test harness in `tools/smoke-test/` can produce fresh ones.
-8. **Migrate the legacy SharePoint tracker** and retire it.
+8. **Run the legacy import for real** (`--commit`, with a service account) and retire the SharePoint tracker.
 9. **Deeper analytics** — who resolved what, time to first response, trends over time.
 
 Nothing here is required to keep using the app as it stands today — this is a list of what would make it better, not what's broken.

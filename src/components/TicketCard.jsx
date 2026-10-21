@@ -1,4 +1,4 @@
-import { categoryMeta, statusMeta, formatDate } from '../utils/helpers';
+import { categoryMeta, statusMeta, formatDate, blockLabel, roomLabel, openAgeMs, formatAge, ageColor } from '../utils/helpers';
 
 export default function TicketCard({ ticket, onOpen, onOpenPhoto }) {
   const cat = categoryMeta(ticket.category);
@@ -35,13 +35,16 @@ export default function TicketCard({ ticket, onOpen, onOpenPhoto }) {
           <span className="cat-icon">{cat.icon}</span>
         </div>
       </div>
-      <div className="ticket-title display">{ticket.block} · Rm {ticket.room}</div>
+      <div className="ticket-title display">{blockLabel(ticket.block)} · {roomLabel(ticket.room)}</div>
       <div className="dash"></div>
       <div className="ticket-body">
         <p className="ticket-desc">{ticket.description}</p>
         <div className="ticket-meta">
           <span className="dim">
             {ticket.reportedBy ? ticket.reportedBy + ' · ' : ''}{formatDate(ticket.reportedAt)}
+            {openAgeMs(ticket) != null && (
+              <span className="mono" style={{ marginLeft: 6, color: ageColor(openAgeMs(ticket)) }}>⏱ open {formatAge(openAgeMs(ticket))}</span>
+            )}
           </span>
           <span className="mono status-pill" style={{ background: st.color + '22', color: st.color }}>
             {st.label.toUpperCase()}

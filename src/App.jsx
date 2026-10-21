@@ -69,7 +69,7 @@ export default function App() {
             <SemesterSelect value={semesterId} onChange={setSemesterId} />
           </div>
         )}
-        {board && <StatsGrid tickets={visibleTickets} />}
+        {board && <StatsGrid tickets={visibleTickets} activeStatus={filterStatus} onSelect={setFilterStatus} />}
         {board && (
           <Filters
             tickets={visibleTickets}

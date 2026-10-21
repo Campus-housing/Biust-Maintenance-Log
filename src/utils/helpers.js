@@ -37,7 +37,7 @@ export function friendlyAuthError(e) {
 export function makeTicketCode(block, room) {
   return (
     block.replace(/\s+/g, '').slice(0, 3).toUpperCase() +
-    '-' + room + '-' +
+    '-' + (room || 'AREA') + '-' +
     Date.now().toString(36).toUpperCase().slice(-4)
   );
 }
@@ -137,4 +137,48 @@ export function median(nums) {
   const sorted = [...nums].sort((a, b) => a - b);
   const mid = Math.floor(sorted.length / 2);
   return sorted.length % 2 ? sorted[mid] : (sorted[mid - 1] + sorted[mid]) / 2;
+}
+
+
+// ---------- Display helpers ----------
+// "4" -> "Block 4", "C" -> "Block C"; named locations (BPC, Fengyue 3, ...) are unchanged.
+export function blockLabel(b) {
+  return /^(\d|[A-F])$/.test(String(b)) ? 'Block ' + b : b;
+}
+// Rooms like "17", "2B", "F27" -> "Rm 17"; common areas ("Kitchen", "Ablution-R47") stay as written; blank -> "Common area".
+export function roomLabel(room) {
+  const r = String(room == null ? '' : room).trim();
+  if (!r) return 'Common area';
+  return /^[A-Za-z]{0,2}\d{1,3}[A-Za-z]?$/.test(r) ? 'Rm ' + r : r;
+}
+
+// ---------- Ageing and speed bands (same bands the old tracker used) ----------
+const DAY = 24 * 3600000;
+export const SPEED_BANDS = [
+  { id: 'fast', label: 'Fast', hint: 'up to 2 days', maxMs: 2 * DAY, color: '#4FB477' },
+  { id: 'normal', label: 'Normal', hint: '3–5 days', maxMs: 5 * DAY, color: '#5B9BD5' },
+  { id: 'slow', label: 'Slow', hint: '6–10 days', maxMs: 10 * DAY, color: '#F2A93C' },
+  { id: 'critical', label: 'Critical', hint: '11+ days', maxMs: Infinity, color: '#E15554' },
+];
+export function speedBand(ms) {
+  return SPEED_BANDS.find((b) => ms <= b.maxMs) || SPEED_BANDS[SPEED_BANDS.length - 1];
+}
+export function formatAge(ms) {
+  if (ms == null || !Number.isFinite(ms) || ms < 0) return '';
+  const days = Math.floor(ms / DAY);
+  return days >= 1 ? days + 'd' : Math.max(0, Math.floor(ms / 3600000)) + 'h';
+}
+export function ageColor(ms) {
+  return ms <= 2 * DAY ? 'var(--dim)' : ms <= 5 * DAY ? '#F2A93C' : '#E15554';
+}
+export function openAgeMs(t) {
+  if (t.status === 'done' || !t.reportedAt) return null;
+  const ms = Date.now() - new Date(t.reportedAt).getTime();
+  return Number.isFinite(ms) && ms >= 0 ? ms : null;
+}
+export function monthKey(iso) {
+  return String(iso || '').slice(0, 7);
+}
+export function monthLabel(key) {
+  return new Date(key + '-01T00:00:00Z').toLocaleDateString('en-GB', { month: 'short', year: '2-digit', timeZone: 'UTC' });
 }

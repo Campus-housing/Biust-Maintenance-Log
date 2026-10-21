@@ -5,6 +5,9 @@ import { useAuth } from '../contexts/AuthContext';
 import { useToast } from '../contexts/ToastContext';
 import { BLOCK_GROUPS, FACILITIES_GROUP, CATEGORIES } from '../utils/constants';
 import { makeTicketCode, publicMirror, currentSemester } from '../utils/helpers';
+import RoomField from './RoomField';
+import AreaChips from './AreaChips';
+import IssueChips from './IssueChips';
 
 function visibleBlockGroups({ canManageTickets, canSeeOversight, assignedBlocks }) {
   if (canManageTickets || canSeeOversight) return BLOCK_GROUPS;
@@ -61,8 +64,8 @@ export default function TicketFormModal({ onClose }) {
   }
 
   async function submit() {
-    if (!block || !room.trim() || !description.trim()) {
-      setError('Please add a location, room number, and a description.');
+    if (!block || !description.trim()) {
+      setError('Please add a location and a description (room can be left blank for general areas).');
       return;
     }
     setError(''); setSaving(true);
@@ -109,11 +112,9 @@ export default function TicketFormModal({ onClose }) {
                   ))}
                 </select>
               </div>
-              <div>
-                <label className="field-label">Room</label>
-                <input className="input" placeholder="e.g. 17" value={room} onChange={(e) => setRoom(e.target.value)} />
-              </div>
+              <RoomField block={block} value={room} onChange={setRoom} />
             </div>
+            <AreaChips value={room} onPick={setRoom} />
 
             <div>
               <label className="field-label">Category</label>
@@ -133,6 +134,7 @@ export default function TicketFormModal({ onClose }) {
 
             <div>
               <label className="field-label">What's wrong?</label>
+              <IssueChips category={category} onPick={(t) => setDescription((d) => (!d.trim() ? t : d.includes(t) ? d : d.replace(/[;\s]+$/, '') + '; ' + t))} />
               <textarea className="input" rows={2} placeholder="e.g. sockets not working" value={description} onChange={(e) => setDescription(e.target.value)} style={{ marginBottom: 12 }} />
             </div>
 

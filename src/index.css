@@ -123,3 +123,13 @@ textarea#formDesc { margin-bottom:12px; }
   animation: toast-in 0.2s ease-out;
 }
 @keyframes toast-in { from { opacity:0; transform: translateX(-50%) translateY(10px); } to { opacity:1; transform: translateX(-50%) translateY(0); } }
+.section-tiles { display:grid; grid-template-columns:1fr 1fr; gap:10px; margin:6px 0 12px; }
+.section-tile { background:var(--card); border:1px solid var(--border); border-radius:14px; padding:12px; text-align:left; cursor:pointer; color:var(--text); font-family:inherit; display:flex; flex-direction:column; gap:3px; }
+.section-tile-active { border-color:#5B9BD5; box-shadow:0 0 0 1px #5B9BD5 inset; }
+.section-tile-title { font-weight:700; font-size:14px; display:flex; align-items:center; justify-content:space-between; gap:6px; }
+.section-tile-sub { font-size:11px; color:var(--muted); }
+.section-panel { margin-bottom:12px; }
+.section-panel-label { font-size:11px; color:var(--dim); margin:2px 2px 8px; letter-spacing:.05em; text-transform:uppercase; }
+.empty-locations { font-size:11px; color:var(--dim); line-height:1.7; margin:2px 2px 6px; }
+.stat-card-btn { font-family:inherit; cursor:pointer; color:inherit; }
+.section-panel:last-of-type { margin-bottom: 90px; }

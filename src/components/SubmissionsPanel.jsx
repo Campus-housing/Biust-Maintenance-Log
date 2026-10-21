@@ -4,7 +4,8 @@ import { db, submissionsCol, ticketsCol } from '../firebase';
 import { useAuth } from '../contexts/AuthContext';
 import { useToast } from '../contexts/ToastContext';
 import { BLOCK_GROUPS, CATEGORIES } from '../utils/constants';
-import { categoryMeta, formatDate, makeTicketCode, publicMirror, semesterForDate } from '../utils/helpers';
+import { categoryMeta, formatDate, makeTicketCode, publicMirror, semesterForDate, blockLabel } from '../utils/helpers';
+import RoomField from './RoomField';
 
 function SubmissionCard({ s, onAccept, onDecline }) {
   const [open, setOpen] = useState(false);
@@ -18,8 +19,8 @@ function SubmissionCard({ s, onAccept, onDecline }) {
   const cat = categoryMeta(s.category);
 
   async function handleAccept() {
-    if (!draft.block || !draft.room.trim() || !draft.description.trim()) {
-      setError('Location, room, and description are all required before accepting.');
+    if (!draft.block || !draft.description.trim()) {
+      setError('A location and a description are required before accepting (room can be blank for general areas).');
       return;
     }
     setError(''); setBusy(true);
@@ -46,7 +47,7 @@ function SubmissionCard({ s, onAccept, onDecline }) {
     <div className="user-row-wrap">
       <button type="button" className="user-row" onClick={() => setOpen((o) => !o)} style={{ alignItems: 'flex-start' }}>
         <span>
-          <strong>{s.block || '(no location given)'}{s.room ? ' · Rm ' + s.room : ''}</strong>
+          <strong>{s.block ? blockLabel(s.block) : '(no location given)'}{s.room ? ' · ' + (/^[A-Za-z]{0,2}\d{1,3}[A-Za-z]?$/.test(s.room) ? 'Rm ' + s.room : s.room) : ''}</strong>
           <br /><span className="dim" style={{ fontSize: 11 }}>{cat.icon} {s.description}</span>
           <br /><span className="dim" style={{ fontSize: 10 }}>{formatDate(s.submittedAt)}{s.reportedBy ? ' · ' + s.reportedBy : ''}{s.contact ? ' · 📞 ' + s.contact : ''}</span>
         </span>
@@ -67,10 +68,7 @@ function SubmissionCard({ s, onAccept, onDecline }) {
                 ))}
               </select>
             </div>
-            <div>
-              <label className="field-label">Room</label>
-              <input className="input" value={draft.room} onChange={(e) => setDraft((d) => ({ ...d, room: e.target.value }))} />
-            </div>
+            <RoomField block={draft.block} value={draft.room} onChange={(v) => setDraft((d) => ({ ...d, room: v }))} />
           </div>
           <label className="field-label">Description</label>
           <textarea className="input" rows={2} style={{ marginBottom: 8 }} value={draft.description} onChange={(e) => setDraft((d) => ({ ...d, description: e.target.value }))} />
