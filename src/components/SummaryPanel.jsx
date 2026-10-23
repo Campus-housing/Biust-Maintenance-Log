@@ -1,22 +1,13 @@
 import { useEffect, useState } from 'react';
 import { getDocs } from 'firebase/firestore';
 import { usersCol } from '../firebase';
-import { BLOCKS, BLOCK_GROUPS, CATEGORIES } from '../utils/constants';
+import { BLOCKS, BLOCK_GROUPS, CATEGORIES, CATEGORY_COLORS } from '../utils/constants';
 import { isArchived, resolutionMs, formatDuration, average, blockLabel } from '../utils/helpers';
 import { downloadWorkbook } from '../utils/export';
 import PieChart from './PieChart';
 import BarChart from './BarChart';
 import ResolutionStats from './ResolutionStats';
 
-const CATEGORY_COLORS = {
-  electricity: '#F2A93C',
-  plumbing: '#5B9BD5',
-  furniture: '#C77B3B',
-  access: '#8B96AD',
-  transport: '#4FB477',
-  wifi: '#A78BFA',
-  inventory: '#F472B6',
-};
 const LOCATION_BAR_COLOR = '#5B9BD5';
 const MAX_BAR_LOCATIONS = 8;
 const ALL = '__all__';

@@ -4,10 +4,10 @@ import { specialtyLabel } from '../utils/helpers';
 import { downloadWorkbook } from '../utils/export';
 import { useSubmissionsCount } from '../hooks/useSubmissionsCount';
 
-export default function IdentityCard({ tickets, onOpenManage, onOpenSummary, onOpenInbox }) {
+export default function IdentityCard({ tickets, onOpenManage, onOpenSummary, onOpenInbox, onOpenAccount }) {
   const {
     currentUser, role, name, specialty, assignedBlocks, publicMode,
-    isAdmin, isMaintainer, canSeeOversight, logout, exitPublicMode,
+    isAdmin, isMaintainer, isStudent, canSeeOversight, logout, exitPublicMode,
   } = useAuth();
   const { count: inboxCount, canReview } = useSubmissionsCount();
 
@@ -47,7 +47,8 @@ export default function IdentityCard({ tickets, onOpenManage, onOpenSummary, onO
               Inbox{inboxCount > 0 ? ' (' + inboxCount + ')' : ''}
             </button>
           )}
-          <button type="button" className="badge-btn" onClick={() => downloadWorkbook(tickets, role || 'export')}>Export</button>
+          {!isStudent && <button type="button" className="badge-btn" onClick={() => downloadWorkbook(tickets, role || 'export')}>Export</button>}
+          <button type="button" className="badge-btn" onClick={onOpenAccount}>Account</button>
           <button type="button" className="badge-btn" onClick={logout}>Log out</button>
         </span>
       </div>

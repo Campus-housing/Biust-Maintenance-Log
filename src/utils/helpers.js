@@ -1,4 +1,4 @@
-import { CATEGORIES, STATUSES, SPECIALTIES, ARCHIVE_MS, RESIDENTIAL_BLOCKS, SEMESTERS } from './constants';
+import { CATEGORIES, STATUSES, SPECIALTIES, ARCHIVE_MS, RESIDENTIAL_BLOCKS, SEMESTERS, PASSWORD_MIN } from './constants';
 
 export function categoryMeta(id) {
   return CATEGORIES.find((c) => c.id === id) || CATEGORIES[3];
@@ -28,11 +28,33 @@ export function friendlyAuthError(e) {
   const code = e && e.code ? e.code : '';
   if (code === 'auth/invalid-credential' || code === 'auth/wrong-password' || code === 'auth/user-not-found') return 'Incorrect email or password.';
   if (code === 'auth/email-already-in-use') return 'An account with this email already exists — try logging in instead.';
-  if (code === 'auth/weak-password') return 'Password should be at least 6 characters.';
+  if (code === 'auth/weak-password') return 'That password is too weak — use at least 8 characters with a letter and a number.';
   if (code === 'auth/invalid-email') return 'That email address looks invalid.';
   if (code === 'auth/too-many-requests') return 'Too many attempts — wait a moment and try again.';
+  if (code === 'auth/user-disabled') return 'This account has been disabled. Contact an administrator.';
+  if (code === 'auth/network-request-failed') return 'No connection — check your internet and try again.';
+  if (code === 'auth/requires-recent-login') return 'For security, please log out and log in again, then retry.';
   if (code === 'auth/configuration-not-found') return 'That sign-in method isn\u2019t turned on yet in Firebase — check Authentication > Sign-in method.';
+  if (code === 'app/account-disabled') return 'This account has been deactivated. Contact an administrator if you think that is a mistake.';
+  if (code === 'app/not-staff') return 'That is a student account — use the Student tab to sign in.';
+  if (code === 'app/not-student') return 'That is a staff account — use the Staff tab to sign in.';
   return (e && e.message) || 'Something went wrong. Try again.';
+}
+
+// ---------- Passwords ----------
+export function validatePassword(pw) {
+  if (!pw || pw.length < PASSWORD_MIN) return 'Use at least ' + PASSWORD_MIN + ' characters.';
+  if (!/[A-Za-z]/.test(pw) || !/\d/.test(pw)) return 'Include at least one letter and one number.';
+  if (/^(password|12345678|qwertyui|11111111)/i.test(pw)) return 'That password is too easy to guess.';
+  return '';
+}
+// Random, unambiguous (no 0/O, 1/l/I) password for admin-created accounts.
+export function generatePassword(len = 14) {
+  const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnpqrstuvwxyz23456789';
+  const bytes = crypto.getRandomValues(new Uint32Array(len));
+  let out = '';
+  for (const b of bytes) out += chars[b % chars.length];
+  return /\d/.test(out) && /[A-Za-z]/.test(out) ? out : generatePassword(len);
 }
 export function makeTicketCode(block, room) {
   return (

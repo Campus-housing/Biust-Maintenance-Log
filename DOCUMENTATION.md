@@ -18,6 +18,9 @@ Full technical reference for the BIUST Maintenance & Facilities Log. See [README
 - [The board (dashboard)](#the-board-dashboard)
 - [Rooms, common areas and quick picks](#rooms-common-areas-and-quick-picks)
 - [Importing the legacy tracker](#importing-the-legacy-tracker)
+- [Accounts and sign-in](#accounts-and-sign-in)
+- [Security model](#security-model)
+- [Emails](#emails)
 - [Microsoft (Azure AD) sign-in — removed for now](#microsoft-azure-ad-sign-in--removed-for-now)
 - [Installing as an app (PWA)](#installing-as-an-app-pwa)
 - [Adding staff and setting up RAs](#adding-staff-and-setting-up-ras)
@@ -159,6 +162,14 @@ A raw, unreviewed report — created without any login, by a student reporting a
 
 ---
 
+### Account fields and collections added with the accounts round
+
+- `users`: `active` (false = deactivated; missing counts as active), `mustChangePassword` (true until the person picks their own password), `lastLoginAt`. `role` may now be `student`.
+- `submissions`: `submittedByUid` / `submittedByEmail` when a signed-in student sent it (must equal the sender's own uid/email).
+- `tickets`: `studentUid` / `studentEmail` when the ticket came from a signed-in student's report (never copied to `publicBoard`).
+- `auditLog/{id}`: `at, byUid, byName, action, targetEmail, …` — append-only admin activity (admin-only read/write).
+- `mail/{id}`: `to, message{subject,text}` — outgoing email queue, used only once the Trigger Email extension is installed.
+
 ## Security rules
 
 ```
@@ -166,17 +177,23 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
+    // ---------- who is signed in ----------
     function isSignedIn() { return request.auth != null; }
     function myUser() { return get(/databases/$(database)/documents/users/$(request.auth.uid)).data; }
-    function myRole() { return myUser().role; }
-    function isAdmin() { return isSignedIn() && myRole() == 'admin'; }
-    function isMaintainer() { return isSignedIn() && myRole() == 'maintainer'; }
-    function isSupervisor() { return isSignedIn() && myRole() == 'supervisor'; }
-    function isReporter() { return isSignedIn() && myRole() == 'reporter'; }
-    function isStaff() { return isAdmin() || isMaintainer() || isSupervisor(); }
-    function mySpecialty() { return ('specialty' in myUser()) ? myUser().specialty : 'all'; }
-    function myAssignedBlocks() { return ('assignedBlocks' in myUser()) ? myUser().assignedBlocks : []; }
-    function isOwner() { return isSignedIn() && resource.data.reportedByUid == request.auth.uid; }
+    // A missing 'active' field counts as active (accounts that pre-date the field).
+    function isActive() { return myUser().get('active', true) == true; }
+    function hasRole(r) { return isSignedIn() && isActive() && myUser().role == r; }
+    function isAdmin() { return hasRole('admin'); }
+    function isMaintainer() { return hasRole('maintainer'); }
+    function isSupervisor() { return hasRole('supervisor'); }
+    function isReporter() { return hasRole('reporter'); }   // shown as "RA" in the app
+    function isStudent() { return hasRole('student'); }
+    function isOversight() { return isAdmin() || isSupervisor(); }
+    function isTeam() { return isAdmin() || isMaintainer() || isSupervisor() || isReporter(); }
+    function mySpecialty() { return myUser().get('specialty', 'all'); }
+    function myAssignedBlocks() { return myUser().get('assignedBlocks', []); }
+    function isOwner() { return isSignedIn() && isActive() && resource.data.reportedByUid == request.auth.uid; }
+    function isSubmitter() { return isSignedIn() && 'submittedByUid' in resource.data && resource.data.submittedByUid == request.auth.uid; }
     function canSeeTicket(cat) {
       return isAdmin() || isSupervisor()
         || (isMaintainer() && (mySpecialty() == 'all' || mySpecialty() == cat));
@@ -193,17 +210,31 @@ service cloud.firestore {
       ];
     }
 
+    // ---------- accounts ----------
     match /users/{userId} {
-      allow read: if isSignedIn() && (request.auth.uid == userId || isStaff());
-      allow create: if isAdmin()
-                    || (isSignedIn() && request.auth.uid == userId && request.resource.data.role == 'reporter');
+      // Your own record, or (admin/supervisor) everyone's — maintainers and RAs can't list accounts.
+      allow read: if isSignedIn() && (request.auth.uid == userId || isOversight());
+      // Self sign-up can ONLY create a plain student record. Staff accounts are created by an admin.
+      allow create: if (isSignedIn() && request.auth.uid == userId
+                        && request.resource.data.role == 'student'
+                        && request.resource.data.keys().hasOnly(['email', 'name', 'role', 'createdAt', 'active', 'mustChangePassword'])
+                        && request.resource.data.email == request.auth.token.email
+                        && request.resource.data.get('active', true) == true
+                        && request.resource.data.get('mustChangePassword', false) == false)
+                    || isAdmin();
+      // You may change only your name, last-login time, or clear your own "must change password" flag.
+      // Role, specialty, assigned blocks and active are admin-only — this blocks self-promotion.
       allow update: if isAdmin()
-                    || (isSignedIn() && request.auth.uid == userId && request.resource.data.role == resource.data.role);
+                    || (isSignedIn() && request.auth.uid == userId
+                        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['name', 'lastLoginAt', 'mustChangePassword'])
+                        && (request.resource.data.get('mustChangePassword', false) == false
+                            || resource.data.get('mustChangePassword', false) == true));
       allow delete: if isAdmin();
     }
 
+    // ---------- tickets ----------
     match /tickets/{ticketId} {
-      allow create: if isSignedIn()
+      allow create: if isTeam()
                     && request.resource.data.reportedByUid == request.auth.uid
                     && request.resource.data.status == 'pending'
                     && (
@@ -218,23 +249,45 @@ service cloud.firestore {
                     || (isOwner() && resource.data.status == 'pending');
     }
 
+    // Public, sanitised copy of tickets (no names, contacts, photos or notes). Only team members write it.
     match /publicBoard/{ticketId} {
       allow read: if true;
-      allow write: if isSignedIn();
+      allow write: if isTeam();
     }
 
+    // ---------- reports waiting for review ----------
     match /submissions/{id} {
+      // Anyone may submit (no account needed). If a student is signed in, the record must carry their own uid/email.
       allow create: if request.resource.data.keys().hasAll(['block','room','description','status','submittedAt'])
                     && request.resource.data.status == 'pending'
                     && request.resource.data.block is string
                     && request.resource.data.room is string
                     && request.resource.data.description is string
-                    && request.resource.data.description.size() < 2000;
+                    && request.resource.data.description.size() < 2000
+                    && (!('submittedByUid' in request.resource.data) || request.resource.data.submittedByUid == request.auth.uid)
+                    && (!('submittedByEmail' in request.resource.data) || request.resource.data.submittedByEmail == request.auth.token.email);
+      // The RA for that block, admin, and the student who sent it.
       allow read: if isAdmin()
-                    || (isReporter() && resource.data.block in myAssignedBlocks());
+                    || (isReporter() && resource.data.block in myAssignedBlocks())
+                    || isSubmitter();
       allow update: if (isAdmin() || (isReporter() && resource.data.block in myAssignedBlocks()))
                     && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status','reviewedBy','reviewedByName','reviewedAt','linkedTicketId']);
       allow delete: if isAdmin();
+    }
+
+    // ---------- admin audit trail (append-only) ----------
+    match /auditLog/{id} {
+      allow create: if isAdmin() && request.resource.data.byUid == request.auth.uid;
+      allow read: if isAdmin();
+      allow update, delete: if false;
+    }
+
+    // ---------- outgoing email queue (used only if the Trigger Email extension is installed) ----------
+    match /mail/{id} {
+      allow create: if isTeam()
+                    && request.resource.data.keys().hasOnly(['to', 'message'])
+                    && request.resource.data.to is string;
+      allow read, update, delete: if false;
     }
   }
 }
@@ -252,12 +305,21 @@ service cloud.firestore {
 - `publicBoard` writes just require being signed in (any role) rather than ownership checks, since it only ever holds non-sensitive data — the real access control lives on the `tickets` collection.
 - Anyone, logged in or not, can create a `submissions` document — but the shape is still checked (required fields present, description under 2000 characters), so it's not a completely unchecked write target even without an account attached.
 - Only the RA for that specific block, or admin (for any block), can read or act on a submission — and even they can only ever touch the review-status fields (`status`, `reviewedBy`, `reviewedByName`, `reviewedAt`, `linkedTicketId`), never quietly rewrite what was actually reported.
+- **No self-promotion.** A user can change only their own `name`, `lastLoginAt`, and clear their own `mustChangePassword`. `role`, `specialty`, `assignedBlocks` and `active` are admin-only. (The earlier rules let any signed-in user edit their own `assignedBlocks`/`specialty` — which made it possible to become the RA of any block or a maintainer for everything — and let a new account be created with arbitrary blocks. Both are closed.)
+- Self sign-up can create **only** a plain `student` record whose email matches the signed-in account; it cannot carry blocks, a specialty, or any other field.
+- A deactivated account (`active == false`) loses every role-based permission immediately — the rules check it on every request.
+- Students cannot create or read tickets, and cannot write the public board; only team members (admin, supervisor, maintainer, RA) can write `publicBoard`.
+- Only admin and supervisor can list accounts (for RA names); maintainers and RAs cannot.
+- A student reads only the submissions that carry their own uid; a signed-in student cannot submit under someone else's uid or email.
+- `auditLog` is append-only and admin-only; `mail` can be written by the team but never read back.
 
 ## Roles, in detail
 
 **Public (no login).** Tap "View status board without logging in" on the login screen. Read-only, no report button, no status changes. Reads from `publicBoard`.
 
-**Reporter.** Default role for anyone who signs up. Sees only tickets where `reportedByUid` matches their own UID. Can submit tickets for any campus facility, but for a residential block only if admin has set them up as that block's RA (a block can have more than one). Can add notes to their own tickets, and delete them while still `pending` — once a maintainer has picked it up, deletion locks, enforced by the rule, not just the UI. If they're an RA for at least one block, they also get an **Inbox** showing pending student submissions for that block — see [Student submissions & review queue](#student-submissions--review-queue).
+**Student.** Self sign-up. Can submit reports (tied to their account) and follow their progress under *My reports*; cannot read any ticket, the board data, or anyone else's reports.
+
+**Reporter (shown as "RA").** Created by an admin (self sign-up now creates *students* — see Accounts and sign-in). Sees only tickets where `reportedByUid` matches their own UID. Can submit tickets for any campus facility, but for a residential block only if admin has set them up as that block's RA (a block can have more than one). Can add notes to their own tickets, and delete them while still `pending` — once a maintainer has picked it up, deletion locks, enforced by the rule, not just the UI. If they're an RA for at least one block, they also get an **Inbox** showing pending student submissions for that block — see [Student submissions & review queue](#student-submissions--review-queue).
 
 **Maintainer.** Created only through the admin's Manage panel. Assigned a specialty at creation (or "All categories") — an electrician set to `electricity` only ever sees electrical tickets, on the board and in search; everything else is invisible to them, not just hidden. Updates status through a two-step confirm (select the target status, then confirm) rather than a single tap.
 
@@ -351,6 +413,52 @@ node tools/import-legacy/import.mjs  <file.xlsx> --commit --service-account <key
 - **The commit path has not been run against a real Firebase project** — only the dry run is tested. Try it on a throwaway project or the emulator first.
 - The spreadsheet contains personal data (contact numbers): keep it out of git (`legacy-data/` and `*.service-account.json` are git-ignored).
 
+## Accounts and sign-in
+
+**Two ways in, one login screen.** *Student* tab: log in, or create an account (name, email, a password of 8+ characters with a letter and a number, confirmed). *Staff* tab: log in only — there is no sign-up, because staff accounts (admin, supervisor, maintainer, RA) are created by an admin. Signing in on the wrong tab is refused with a clear message. Anonymous reporting (no account) and the public status board still work from the same screen.
+
+**Students** land on *My reports*: a Report-an-issue button, a verify-your-email prompt (a verification email is sent at sign-up), and each report's progress — *Waiting for review* → *Accepted* (then the ticket's live status: Pending / In progress / No access / Done) or *Not actioned*. Progress comes from the public status board, so no private ticket data is exposed to students.
+
+**Admins create accounts for everyone** (Manage → *Add a new account*): Student, RA, Maintainer, Supervisor or Admin (admin asks for confirmation). Two ways to give access:
+- **Email invite (recommended):** the account is created with a random password nobody sees, and Firebase emails the person a link to choose their own. If the email doesn't arrive, open their account and tap *Send password reset email*.
+- **Temporary password:** a strong password is generated (or typed), shown once in a ready-to-send message, and the person is forced to choose their own the first time they sign in.
+
+**Managing an account** (Manage → tap it): change role / specialty / RA blocks; **Send password reset email** (works for anyone — admins cannot read or set another person's password, only trigger the reset link); **Deactivate / Reactivate** (immediate; the person is signed out on their next request and cannot sign back in); you cannot change or deactivate your own account. **RA coverage** ignores deactivated RAs. An **Activity log** lists the latest admin actions (account created, role changed, reset sent, deactivated…).
+
+**Everyone** has an *Account* panel (the name/avatar on desktop, the Account button on phones): email-verification status with a resend button, and change password (asks for the current one). Forgot-password on the login screen sends a reset email.
+
+**Existing accounts.** Before this round everyone who signed up became a "reporter" (shown as RA). Those accounts keep working unchanged; new sign-ups become students. Open Manage and set the people who are really students to *Student*.
+
+**Policy.** Passwords: 8+ characters, at least one letter and one number, and not an obvious one (`validatePassword` in `helpers.js`). Firebase's own limit is 6, so this is enforced in the app; also set a password policy in the console (below).
+
+## Security model
+
+Authority lives in `firestore.rules`; the UI only hides things for convenience. The rules were rewritten in this round (see the bullets under [Security rules](#security-rules)) and tests are in `tools/rules-test/` (22 checks; run `npm install && npm test` in that folder — needs Java and the Firebase CLI). **At the time of writing the tests had not been run** (the emulator could not be downloaded), so run them before relying on the rules; you can also try the cases in the Firebase console's *Rules Playground*.
+
+**Roll-out order matters:** publish the new rules in the Firebase console **before** (or together with) deploying the app. The new app code works with the new rules; old app code still works with them except that *new self sign-ups* from an old page would be refused (they'd try to create an "RA").
+
+**Firebase console hardening checklist** (Authentication → Settings / Templates):
+1. *Email enumeration protection*: on.
+2. *Password policy*: minimum length 8, require a number (and letter) — matches the app's rule.
+3. *Authorized domains*: only your site (`yunghit.github.io`) and `localhost` if needed.
+4. *Templates*: set the sender name and language for *Email address verification* and *Password reset* so invites look trustworthy.
+5. *Firebase App Check* (reCAPTCHA v3) for Firestore and Auth: strongly recommended — anyone can currently create student accounts and submit anonymous reports, and App Check is what stops scripts abusing that.
+6. If you ever move to the Blaze plan, set a **budget alert**.
+
+**Known gaps** (honest list): sign-up is open to anyone with an email address (no BIUST-domain restriction — add one in rules with `request.auth.token.email.matches(...)` if wanted); email verification is requested but not enforced; no automatic sign-out after inactivity; no multi-factor authentication; admin password *setting* (as opposed to reset-by-email) and server-side revocation of sessions need Cloud Functions (Blaze plan); there is no "new sign-in" alert email (needs Functions + a mail provider).
+
+## Emails
+
+**Working now (free, no setup beyond Firebase's templates):**
+- *Verification email* when a student signs up (and a resend button).
+- *Invite email* when an admin creates an account in invite mode (it is Firebase's password-reset email — the link lets the person choose a password).
+- *Password-reset email* — from "Forgot password?", and from the admin's *Send password reset email* button.
+These come from Firebase's default sender; customise the wording and sender name under Authentication → Templates. They can land in spam the first time.
+
+**Optional (needs the Blaze plan):** the *Trigger Email from Firestore* extension sends any email written to the `mail` collection. Steps: upgrade to Blaze (a card is required; usage at this scale is effectively free — set a budget alert), install the extension with collection name `mail` and an SMTP/SendGrid/Mailgun account, publish the rules (they already allow the team to write `mail`), then set `MAIL_ENABLED = true` in `src/utils/mail.js`. With that on, a student whose report becomes a ticket gets an email when it is marked **Done** (`TicketDetailModal`). Further emails (status changes, "report accepted") are one `queueEmail(...)` call each.
+
+**Not built:** "new sign-in" alert emails. Reliably detecting a sign-in server-side needs Cloud Functions with blocking functions (Identity Platform) or a scheduled function — a larger change that also needs Blaze. If that is what "emails after logging in" was meant to cover, it is the next step.
+
 ## Microsoft (Azure AD) sign-in — removed for now
 
 An earlier version of this app included a "Continue with Microsoft" button. It's been removed at Thabiso's request while other pieces settle — the plan is to reintroduce it later, most likely gated to `@biust.ac.bw` accounts via Azure AD, which will need BIUST's ICT department to register an app in their Azure AD (Microsoft Entra ID) tenant. See the [Roadmap](#roadmap).
@@ -364,6 +472,8 @@ The service worker caches the app's own static files for faster repeat loads and
 The icons (`icon-192.png`, `icon-512.png`) are placeholders — a navy square with "M&F" in amber, matching the app's colors. Swap them for a real logo at any time by replacing the files in `public/` with the same filenames; nothing else needs to change.
 
 ## Adding staff and setting up RAs
+
+*(Updated: accounts can now be created for **every** role, by email invite or temporary password — see [Accounts and sign-in](#accounts-and-sign-in) for the full flow. The notes below on assigning RAs still apply.)*
 
 See [setup step 9 and 10](#9-add-staff--maintainers-and-supervisors) — in short: admin → Manage → Create account (maintainer or supervisor, with specialty if maintainer); and for RAs, admin → Manage → tap a reporter's row → tick their block(s) → Save blocks. Account creation uses a second, isolated Firebase app instance internally so that creating someone else's login doesn't sign the admin out of their own session.
 
@@ -384,6 +494,16 @@ Summary panel → pick a location (or "All locations") → Download Excel. Also 
 **A ticket doesn't show up on the public board.** Only tickets created *after* the `publicBoard` mirroring was added will have a matching public entry. Anything created earlier only exists in the main `tickets` collection (visible to maintainers/admin, not the public board).
 
 **Rules changes don't seem to take effect.** Firestore rules can take a few seconds to propagate after clicking Publish — refresh and try again before assuming something's wrong.
+
+**An invite or reset email didn't arrive.** Check spam first; then in Manage open the account and tap *Send password reset email* again. If it still doesn't come, check Authentication → Templates and that the address is typed correctly. As a fallback, create the account in *Temporary password* mode.
+
+**"That is a student account — use the Student tab" (or the reverse).** The two tabs are deliberately separate. Staff use the Staff tab; students use the Student tab.
+
+**Someone says their account is deactivated.** An admin deactivated it. Manage → open the account → *Reactivate account*.
+
+**Someone who is really a student shows up as an RA.** They signed up before the student role existed. Manage → open the account → set the role to *Student*.
+
+**A student can't see an accepted report's progress.** Progress comes from the public status board; if the ticket was created before the public board existed, or its board copy was deleted, it shows just *Accepted*.
 
 **Site shows a blank white page after deploying.** Almost always a `base` mismatch in `vite.config.js` — it needs to be `/YourRepoName/` exactly, matching the GitHub repo name (case-sensitive). Check the browser console for 404s on `.js`/`.css` files, which confirms this.
 

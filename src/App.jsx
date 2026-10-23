@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useAuth } from './contexts/AuthContext';
 import { useTickets } from './hooks/useTickets';
 import { useTheme } from './hooks/useTheme';
+import { useMediaQuery } from './hooks/useMediaQuery';
 import AuthScreen from './components/AuthScreen';
 import IdentityCard from './components/IdentityCard';
 import ThemeToggle from './components/ThemeToggle';
@@ -15,14 +16,21 @@ import AdminPanel from './components/AdminPanel';
 import SummaryPanel from './components/SummaryPanel';
 import SubmissionsPanel from './components/SubmissionsPanel';
 import PhotoOverlay from './components/PhotoOverlay';
+import StudentHome from './components/StudentHome';
+import SubmissionForm from './components/SubmissionForm';
+import AccountPanel from './components/AccountPanel';
+import ChangePasswordScreen from './components/ChangePasswordScreen';
 import SemesterSelect from './components/SemesterSelect';
+import TopBar from './components/TopBar';
+import PageHeader from './components/PageHeader';
 import { currentSemester, scopeToSemester } from './utils/helpers';
 import { SEMESTERS } from './utils/constants';
 
 export default function App() {
-  const { initializing, currentUser, publicMode, isBoardView } = useAuth();
+  const { initializing, currentUser, publicMode, isBoardView, isStudent, mustChangePassword, name: accountName } = useAuth();
   const { tickets, loading, error } = useTickets();
   const { theme, toggleTheme } = useTheme();
+  const isDesktop = useMediaQuery('(min-width: 900px)');
 
   const [semesterId, setSemesterId] = useState(() => currentSemester().id);
   const [search, setSearch] = useState('');
@@ -35,6 +43,7 @@ export default function App() {
   const [adminOpen, setAdminOpen] = useState(false);
   const [summaryOpen, setSummaryOpen] = useState(false);
   const [inboxOpen, setInboxOpen] = useState(false);
+  const [accountOpen, setAccountOpen] = useState(false);
   const [photoUrl, setPhotoUrl] = useState(null);
 
   if (initializing) {
@@ -42,6 +51,9 @@ export default function App() {
   }
   if (!currentUser && !publicMode) {
     return <AuthScreen />;
+  }
+  if (currentUser && mustChangePassword) {
+    return <ChangePasswordScreen />;
   }
 
   const board = isBoardView;
@@ -52,22 +64,34 @@ export default function App() {
 
   return (
     <div>
+      {isDesktop && (
+        <TopBar
+          tickets={tickets} board={board} theme={theme} onToggleTheme={toggleTheme}
+          onOpenManage={() => setAdminOpen(true)} onOpenSummary={() => setSummaryOpen(true)} onOpenInbox={() => setInboxOpen(true)} onOpenAccount={() => setAccountOpen(true)}
+        />
+      )}
       <div className="wrap">
-        <div className="header-row">
-          <h1 className="display">BIUST M&amp;F Log</h1>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-            <ThemeToggle theme={theme} onToggle={toggleTheme} />
-            <span className="mono dim">{visibleTickets.length}{board ? ' total' : visibleTickets.length === 1 ? ' report' : ' reports'}</span>
-          </div>
-        </div>
-        <IdentityCard tickets={tickets} onOpenManage={() => setAdminOpen(true)} onOpenSummary={() => setSummaryOpen(true)} onOpenInbox={() => setInboxOpen(true)} />
-        <p className="subtitle">{board ? 'Report and track campus maintenance issues' : "Track the issues you've reported"}</p>
+        {isDesktop ? (
+          <PageHeader board={board} semesterId={semesterId} semesterLabel={semesterLabel} onSemesterChange={setSemesterId} />
+        ) : (
+          <>
+            <div className="header-row">
+              <h1 className="display">BIUST M&amp;F Log</h1>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                <ThemeToggle theme={theme} onToggle={toggleTheme} />
+                {!isStudent && <span className="mono dim">{visibleTickets.length}{board ? ' total' : visibleTickets.length === 1 ? ' report' : ' reports'}</span>}
+              </div>
+            </div>
+            <IdentityCard tickets={tickets} onOpenManage={() => setAdminOpen(true)} onOpenSummary={() => setSummaryOpen(true)} onOpenInbox={() => setInboxOpen(true)} onOpenAccount={() => setAccountOpen(true)} />
+            <p className="subtitle">{board ? 'Report and track campus maintenance issues' : "Track the issues you've reported"}</p>
 
-        {board && (
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
-            <span className="dim" style={{ fontSize: 11 }}>Showing</span>
-            <SemesterSelect value={semesterId} onChange={setSemesterId} />
-          </div>
+            {board && (
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+                <span className="dim" style={{ fontSize: 11 }}>Showing</span>
+                <SemesterSelect value={semesterId} onChange={setSemesterId} />
+              </div>
+            )}
+          </>
         )}
         {board && <StatsGrid tickets={visibleTickets} activeStatus={filterStatus} onSelect={setFilterStatus} />}
         {board && (
@@ -88,8 +112,14 @@ export default function App() {
             search={search} filterStatus={filterStatus} filterCategory={filterCategory} filterUrgent={filterUrgent}
             onOpen={setDetailTicketId} onOpenPhoto={setPhotoUrl}
           />
+        ) : isStudent ? (
+          <StudentHome onReport={() => setFormOpen(true)} />
         ) : (
           <MyReportsList tickets={tickets} loading={loading} onOpen={setDetailTicketId} onOpenPhoto={setPhotoUrl} />
+        )}
+
+        {board && !loading && visibleTickets.length > 0 && (
+          <p className="board-footer">{visibleTickets.length} total {visibleTickets.length === 1 ? 'issue' : 'issues'} · {semesterLabel}</p>
         )}
       </div>
 
@@ -97,7 +127,10 @@ export default function App() {
         <button type="button" className="fab" aria-label="Report an issue" onClick={() => setFormOpen(true)}>+</button>
       )}
 
-      {formOpen && <TicketFormModal onClose={() => setFormOpen(false)} />}
+      {formOpen && (isStudent
+        ? <SubmissionForm student={{ uid: currentUser.uid, email: currentUser.email, name: accountName }} onClose={() => setFormOpen(false)} />
+        : <TicketFormModal onClose={() => setFormOpen(false)} />)}
+      {accountOpen && <AccountPanel onClose={() => setAccountOpen(false)} />}
       {detailTicket && (
         <TicketDetailModal ticket={detailTicket} onClose={() => setDetailTicketId(null)} onOpenPhoto={setPhotoUrl} />
       )}

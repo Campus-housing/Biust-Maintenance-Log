@@ -24,6 +24,12 @@ It's a React app (Vite build, auto-deployed by GitHub Actions) backed by Firebas
 
 *These are illustrative screenshots with sample data, not real student reports — taken from an earlier build. They're now a little out of date (no dark/light toggle, old category list, no Inbox button) — the layout and interaction patterns shown are still accurate, just not every current feature. Ask if you'd like a fresh set.*
 
+**Desktop layout and the student view** (sample data):
+
+![Desktop dashboard](screenshots/06-desktop-dashboard.png)
+![Student home](screenshots/07-student-home.png)
+
+
 **Current dashboard and summary** (sample data):
 
 ![Dashboard, collapsed](screenshots/01-dashboard-collapsed.png)
@@ -53,6 +59,8 @@ It's a React app (Vite build, auto-deployed by GitHub Actions) backed by Firebas
 - **A dashboard that opens as two tiles** — *Residences* and *Campus facilities*. Tap one to see its places with report counts (urgent ones flagged); tap a place to see its reports. Searching opens whatever matches automatically; the status tiles (Pending, In progress, …) are tappable filters.
 - **Built to replace the SharePoint tracker, feature for feature** — room autocomplete from the tracker's own per-block lists (and blank/common-area rooms), one-tap common-issue wording, live "open 24d" ageing on every open ticket, speed bands, monthly trends, a per-location view with that location's RA, and an RA-coverage panel for admins. See `docs/TRACKER-PARITY.md`.
 - **Import the old tracker** with a dry-run-first script (`tools/import-legacy/`) that keeps the original dates, statuses and `C-###` ids.
+- **Separate student and staff sign-in.** The login screen has a *Student* tab (anyone can create an account) and a *Staff* tab (admins, supervisors, maintainers and RAs — accounts are created by an admin, who can invite people by email so no password is ever shared). Signing in on the wrong tab is refused.
+- **Account security.** Password rules, forced password change for temporary passwords, admin-triggered password-reset emails, account deactivation, an admin activity log, and security rules that stop anyone promoting themselves.
 - A lightweight notes thread lets a maintainer leave feedback ("bulbs out of stock, ordered more") that the original reporter can see — and every status change logs itself into the same thread automatically, so there's always a record of who did what and when.
 - Brief confirmation toasts after actions ("Ticket submitted," "Status updated") — no more wondering if something actually saved.
 - Installable as a PWA — add it to a phone's home screen and it opens full-screen, no browser bar.
@@ -66,8 +74,9 @@ Electricity · Plumbing · Carpentry (furniture repairs) · Access/Other · Tran
 | Role | Can do |
 |---|---|
 | **Public** (no login) | View a status board (location, room, category, status, description) — no personal details, no editing |
-| **Student** (no login) | Submit a single issue, or bulk-import many at once by pasting text or uploading a CSV — everything goes to a review queue, nothing appears on the board until an RA or admin accepts it |
-| **Reporter/RA** (default on sign-up) | Submit tickets for any campus facility; for a residential block, only if set up as that block's RA. Review, edit, accept, or decline student submissions for their own block(s). View/delete their own tickets while still Pending, add notes to their own |
+| **Student** (no account) | Submit a single issue, or bulk-import many at once by pasting text or uploading a CSV — everything goes to a review queue, nothing appears on the board until an RA or admin accepts it |
+| **Student** (signed in) | Everything above, but reports are tied to their account: they get a **My reports** page showing each report's progress (waiting for review → accepted → in progress → done), email verification, and a password they control. They cannot see tickets, the board, or anyone else's reports |
+| **RA** (created by an admin) | Submit tickets for any campus facility; for a residential block, only if set up as that block's RA. Review, edit, accept, or decline student submissions for their own block(s). View/delete their own tickets while still Pending, add notes to their own |
 | **Maintainer** (admin-created, with a specialty) | View and update the status of tickets in their specialty category only (or all, if set to "All categories"), add notes |
 | **Supervisor** (admin-created) | View every ticket across all categories, read-only — no status changes. Gets the Summary panel and Excel export |
 | **Admin** (one-time manual bootstrap, then self-sustaining) | Everything above combined, plus create maintainer/supervisor accounts, set specialties, set RA block assignments, and accept/decline student submissions for *any* block |

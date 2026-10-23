@@ -2,17 +2,23 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
+    // ---------- who is signed in ----------
     function isSignedIn() { return request.auth != null; }
     function myUser() { return get(/databases/$(database)/documents/users/$(request.auth.uid)).data; }
-    function myRole() { return myUser().role; }
-    function isAdmin() { return isSignedIn() && myRole() == 'admin'; }
-    function isMaintainer() { return isSignedIn() && myRole() == 'maintainer'; }
-    function isSupervisor() { return isSignedIn() && myRole() == 'supervisor'; }
-    function isReporter() { return isSignedIn() && myRole() == 'reporter'; }
-    function isStaff() { return isAdmin() || isMaintainer() || isSupervisor(); }
-    function mySpecialty() { return ('specialty' in myUser()) ? myUser().specialty : 'all'; }
-    function myAssignedBlocks() { return ('assignedBlocks' in myUser()) ? myUser().assignedBlocks : []; }
-    function isOwner() { return isSignedIn() && resource.data.reportedByUid == request.auth.uid; }
+    // A missing 'active' field counts as active (accounts that pre-date the field).
+    function isActive() { return myUser().get('active', true) == true; }
+    function hasRole(r) { return isSignedIn() && isActive() && myUser().role == r; }
+    function isAdmin() { return hasRole('admin'); }
+    function isMaintainer() { return hasRole('maintainer'); }
+    function isSupervisor() { return hasRole('supervisor'); }
+    function isReporter() { return hasRole('reporter'); }   // shown as "RA" in the app
+    function isStudent() { return hasRole('student'); }
+    function isOversight() { return isAdmin() || isSupervisor(); }
+    function isTeam() { return isAdmin() || isMaintainer() || isSupervisor() || isReporter(); }
+    function mySpecialty() { return myUser().get('specialty', 'all'); }
+    function myAssignedBlocks() { return myUser().get('assignedBlocks', []); }
+    function isOwner() { return isSignedIn() && isActive() && resource.data.reportedByUid == request.auth.uid; }
+    function isSubmitter() { return isSignedIn() && 'submittedByUid' in resource.data && resource.data.submittedByUid == request.auth.uid; }
     function canSeeTicket(cat) {
       return isAdmin() || isSupervisor()
         || (isMaintainer() && (mySpecialty() == 'all' || mySpecialty() == cat));
@@ -29,17 +35,31 @@ service cloud.firestore {
       ];
     }
 
+    // ---------- accounts ----------
     match /users/{userId} {
-      allow read: if isSignedIn() && (request.auth.uid == userId || isStaff());
-      allow create: if isAdmin()
-                    || (isSignedIn() && request.auth.uid == userId && request.resource.data.role == 'reporter');
+      // Your own record, or (admin/supervisor) everyone's — maintainers and RAs can't list accounts.
+      allow read: if isSignedIn() && (request.auth.uid == userId || isOversight());
+      // Self sign-up can ONLY create a plain student record. Staff accounts are created by an admin.
+      allow create: if (isSignedIn() && request.auth.uid == userId
+                        && request.resource.data.role == 'student'
+                        && request.resource.data.keys().hasOnly(['email', 'name', 'role', 'createdAt', 'active', 'mustChangePassword'])
+                        && request.resource.data.email == request.auth.token.email
+                        && request.resource.data.get('active', true) == true
+                        && request.resource.data.get('mustChangePassword', false) == false)
+                    || isAdmin();
+      // You may change only your name, last-login time, or clear your own "must change password" flag.
+      // Role, specialty, assigned blocks and active are admin-only — this blocks self-promotion.
       allow update: if isAdmin()
-                    || (isSignedIn() && request.auth.uid == userId && request.resource.data.role == resource.data.role);
+                    || (isSignedIn() && request.auth.uid == userId
+                        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['name', 'lastLoginAt', 'mustChangePassword'])
+                        && (request.resource.data.get('mustChangePassword', false) == false
+                            || resource.data.get('mustChangePassword', false) == true));
       allow delete: if isAdmin();
     }
 
+    // ---------- tickets ----------
     match /tickets/{ticketId} {
-      allow create: if isSignedIn()
+      allow create: if isTeam()
                     && request.resource.data.reportedByUid == request.auth.uid
                     && request.resource.data.status == 'pending'
                     && (
@@ -54,23 +74,45 @@ service cloud.firestore {
                     || (isOwner() && resource.data.status == 'pending');
     }
 
+    // Public, sanitised copy of tickets (no names, contacts, photos or notes). Only team members write it.
     match /publicBoard/{ticketId} {
       allow read: if true;
-      allow write: if isSignedIn();
+      allow write: if isTeam();
     }
 
+    // ---------- reports waiting for review ----------
     match /submissions/{id} {
+      // Anyone may submit (no account needed). If a student is signed in, the record must carry their own uid/email.
       allow create: if request.resource.data.keys().hasAll(['block','room','description','status','submittedAt'])
                     && request.resource.data.status == 'pending'
                     && request.resource.data.block is string
                     && request.resource.data.room is string
                     && request.resource.data.description is string
-                    && request.resource.data.description.size() < 2000;
+                    && request.resource.data.description.size() < 2000
+                    && (!('submittedByUid' in request.resource.data) || request.resource.data.submittedByUid == request.auth.uid)
+                    && (!('submittedByEmail' in request.resource.data) || request.resource.data.submittedByEmail == request.auth.token.email);
+      // The RA for that block, admin, and the student who sent it.
       allow read: if isAdmin()
-                    || (isReporter() && resource.data.block in myAssignedBlocks());
+                    || (isReporter() && resource.data.block in myAssignedBlocks())
+                    || isSubmitter();
       allow update: if (isAdmin() || (isReporter() && resource.data.block in myAssignedBlocks()))
                     && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status','reviewedBy','reviewedByName','reviewedAt','linkedTicketId']);
       allow delete: if isAdmin();
+    }
+
+    // ---------- admin audit trail (append-only) ----------
+    match /auditLog/{id} {
+      allow create: if isAdmin() && request.resource.data.byUid == request.auth.uid;
+      allow read: if isAdmin();
+      allow update, delete: if false;
+    }
+
+    // ---------- outgoing email queue (used only if the Trigger Email extension is installed) ----------
+    match /mail/{id} {
+      allow create: if isTeam()
+                    && request.resource.data.keys().hasOnly(['to', 'message'])
+                    && request.resource.data.to is string;
+      allow read, update, delete: if false;
     }
   }
 }

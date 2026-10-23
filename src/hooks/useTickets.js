@@ -14,6 +14,11 @@ export function useTickets() {
       setTickets([]);
       return;
     }
+    if (!publicMode && role === 'student') {
+      setTickets([]);
+      setLoading(false);
+      return;
+    }
     setLoading(true);
     let q;
     if (publicMode) {

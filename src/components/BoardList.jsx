@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { BLOCKS, RESIDENTIAL_BLOCKS, FACILITIES_GROUP } from '../utils/constants';
 import { isArchived, ticketMatchesSearch, blockLabel } from '../utils/helpers';
 import TicketCard from './TicketCard';
+import { ChevronRightIcon, FlagIcon, HomeIcon, LandmarkIcon, PinIcon } from './icons';
 
 const FACILITY_NAMES = FACILITIES_GROUP ? FACILITIES_GROUP.options : [];
 
@@ -41,10 +42,10 @@ export default function BoardList({ tickets, loading, search, filterStatus, filt
   const sections = useMemo(() => {
     const extras = [...byBlock.keys()].filter((b) => !BLOCKS.includes(b)).sort();
     const defs = [
-      { key: 'residences', label: 'Residences', icon: '🏠', names: RESIDENTIAL_BLOCKS },
-      { key: 'facilities', label: 'Campus facilities', icon: '🏛️', names: FACILITY_NAMES },
+      { key: 'residences', label: 'Residences', icon: HomeIcon, names: RESIDENTIAL_BLOCKS },
+      { key: 'facilities', label: 'Campus facilities', icon: LandmarkIcon, names: FACILITY_NAMES },
     ];
-    if (extras.length) defs.push({ key: 'other', label: 'Other locations', icon: '📍', names: extras });
+    if (extras.length) defs.push({ key: 'other', label: 'Other locations', icon: PinIcon, names: extras });
     return defs.map((s) => {
       const urgentOf = (n) => (byBlock.get(n) || []).filter((t) => t.urgent && t.status !== 'done').length;
       const withReports = s.names
@@ -92,13 +93,13 @@ export default function BoardList({ tickets, loading, search, filterStatus, filt
             aria-expanded={openSections.has(s.key)}
           >
             <span className="section-tile-title">
-              <span>{s.icon} {s.label}</span>
-              <span className="block-group-chevron">{openSections.has(s.key) ? '▾' : '▸'}</span>
+              <span className="tile-title-main"><span className="tile-icon"><s.icon size={16} /></span>{s.label}</span>
+              <ChevronRightIcon size={16} className={'chev' + (openSections.has(s.key) ? ' chev-open' : '')} />
             </span>
             <span className="section-tile-sub">
               {s.total} {s.total === 1 ? 'report' : 'reports'}{s.withReports.length ? ' · ' + s.withReports.length + (s.withReports.length === 1 ? ' place' : ' places') : ''}
             </span>
-            {s.urgent > 0 && <span className="section-tile-sub" style={{ color: '#E15554' }}>🚩 {s.urgent} urgent</span>}
+            {s.urgent > 0 && <span className="section-tile-sub" style={{ color: '#E15554', display: 'flex', alignItems: 'center', gap: 5 }}><FlagIcon size={12} /> {s.urgent} urgent</span>}
           </button>
         ))}
       </div>
@@ -114,9 +115,9 @@ export default function BoardList({ tickets, loading, search, filterStatus, filt
             return (
               <div key={block} className="block-group">
                 <button type="button" className="block-group-header" onClick={() => flip(setOpenLocations, block)} aria-expanded={open}>
-                  <span className="block-group-title">{urgentInGroup ? '🚩 ' : ''}{blockLabel(block)}</span>
+                  <span className="block-group-title">{urgentInGroup && <FlagIcon size={14} style={{ color: '#E15554', marginRight: 7 }} />}{blockLabel(block)}</span>
                   <span className="block-group-count">{group.length}</span>
-                  <span className="block-group-chevron">{open ? '▾' : '▸'}</span>
+                  <ChevronRightIcon size={16} className={'chev' + (open ? ' chev-open' : '')} />
                 </button>
                 {open && (
                   <div className="block-group-body">

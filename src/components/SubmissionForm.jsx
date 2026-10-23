@@ -7,11 +7,14 @@ import RoomField from './RoomField';
 import AreaChips from './AreaChips';
 import IssueChips from './IssueChips';
 
-function newSubmissionBase() {
-  return { submittedAt: new Date().toISOString(), status: 'pending' };
+function newSubmissionBase(student) {
+  return {
+    submittedAt: new Date().toISOString(), status: 'pending',
+    ...(student ? { submittedByUid: student.uid, submittedByEmail: student.email } : {}),
+  };
 }
 
-export default function SubmissionForm({ onClose }) {
+export default function SubmissionForm({ onClose, student }) {
   const [mode, setMode] = useState('single');
 
   // single-issue fields
@@ -19,7 +22,7 @@ export default function SubmissionForm({ onClose }) {
   const [room, setRoom] = useState('');
   const [category, setCategory] = useState('electricity');
   const [description, setDescription] = useState('');
-  const [reportedBy, setReportedBy] = useState('');
+  const [reportedBy, setReportedBy] = useState(student ? student.name || '' : '');
   const [contact, setContact] = useState('');
   const [urgent, setUrgent] = useState(false);
   const [photo, setPhoto] = useState(null);
@@ -67,7 +70,7 @@ export default function SubmissionForm({ onClose }) {
     setError(''); setSaving(true);
     try {
       await addDoc(submissionsCol, {
-        ...newSubmissionBase(),
+        ...newSubmissionBase(student),
         block, room: room.trim(), category, description: description.trim(),
         reportedBy: reportedBy.trim(), contact: contact.trim(), urgent: !!urgent, photo: photo || null,
       });
@@ -120,7 +123,7 @@ export default function SubmissionForm({ onClose }) {
         const d = drafts[i];
         // eslint-disable-next-line no-await-in-loop
         await addDoc(submissionsCol, {
-          ...newSubmissionBase(),
+          ...newSubmissionBase(student),
           block: d.location, room: (d.room || '').trim(), category: d.category || 'access', description: d.description.trim(),
           reportedBy: '', contact: d.contact || '', urgent: !!d.urgent, photo: null, rawText: d.rawText || '',
         });
@@ -162,7 +165,7 @@ export default function SubmissionForm({ onClose }) {
           <button type="button" className="icon-btn" onClick={onClose}>✕</button>
         </div>
         <p className="dim" style={{ fontSize: 12, marginTop: -8, marginBottom: 14 }}>
-          No login needed — this goes to the RA for that block to review before it's actioned.
+          {student ? 'Sent under your account — you can follow its progress under My reports.' : "No login needed — this goes to the RA for that block to review before it's actioned."}
         </p>
 
         <div className="cat-grid" style={{ gridTemplateColumns: '1fr 1fr', marginBottom: 14 }}>

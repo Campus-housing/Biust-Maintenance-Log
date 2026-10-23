@@ -1,12 +1,14 @@
-import { STATUSES, CATEGORIES } from '../utils/constants';
+import { STATUSES, CATEGORIES, CATEGORY_COLORS } from '../utils/constants';
 import { isArchived } from '../utils/helpers';
+import { SearchIcon, FlagIcon, CategoryIcon } from './icons';
 
+// Idle: tinted outline + text in the chip's own colour. Selected: filled.
 function Chip({ active, color, onClick, children }) {
   const bg = active ? (color || 'var(--text)') : 'transparent';
-  const bd = active ? (color || 'var(--text)') : 'var(--border-soft)';
-  const fg = active ? (color ? '#0B1220' : 'var(--bg)') : 'var(--muted)';
+  const bd = active ? (color || 'var(--text)') : (color ? color + '55' : 'var(--border-soft)');
+  const fg = active ? (color ? '#0B1220' : 'var(--bg)') : (color || 'var(--muted)');
   return (
-    <button type="button" className="chip" style={{ background: bg, borderColor: bd, color: fg }} onClick={onClick}>
+    <button type="button" className="chip" style={{ background: bg, borderColor: bd, color: fg }} aria-pressed={!!active} onClick={onClick}>
       {children}
     </button>
   );
@@ -19,7 +21,7 @@ export default function Filters({ tickets, search, setSearch, filterStatus, setF
   return (
     <>
       <div className="search-wrap">
-        <span className="search-icon">🔍</span>
+        <span className="search-icon"><SearchIcon size={18} /></span>
         <input
           id="searchInput"
           className="input"
@@ -38,14 +40,18 @@ export default function Filters({ tickets, search, setSearch, filterStatus, setF
       <div className="chip-row">
         <Chip active={filterCategory === 'all'} onClick={() => setFilterCategory('all')}>All types</Chip>
         {CATEGORIES.map((c) => (
-          <Chip key={c.id} active={filterCategory === c.id} onClick={() => setFilterCategory(c.id)}>{c.icon} {c.label}</Chip>
+          <Chip key={c.id} active={filterCategory === c.id} color={CATEGORY_COLORS[c.id]} onClick={() => setFilterCategory(c.id)}>
+            <CategoryIcon id={c.id} size={14} /> {c.label}
+          </Chip>
         ))}
         <button
           type="button"
           className={'chip' + (filterUrgent ? ' chip-urgent-active' : '')}
+          style={filterUrgent ? undefined : { color: '#E15554', borderColor: '#E1555555' }}
+          aria-pressed={!!filterUrgent}
           onClick={() => setFilterUrgent((u) => !u)}
         >
-          🚩 Urgent ({urgentCount})
+          <FlagIcon size={14} /> Urgent ({urgentCount})
         </button>
       </div>
     </>
