@@ -3,6 +3,7 @@ import { doc, updateDoc, deleteDoc, setDoc, arrayUnion } from 'firebase/firestor
 import { db } from '../firebase';
 import { useAuth } from '../contexts/AuthContext';
 import { useToast } from '../contexts/ToastContext';
+import { queueEmail } from '../utils/mail';
 import { STATUSES } from '../utils/constants';
 import { categoryMeta, statusMeta, formatDate, blockLabel, roomLabel, openAgeMs, formatAge } from '../utils/helpers';
 
@@ -42,6 +43,9 @@ export default function TicketDetailModal({ ticket, onClose, onOpenPhoto }) {
       await updateDoc(doc(db, 'tickets', ticket.id), { status: pendingStatus, resolvedAt, notes: arrayUnion(historyNote) });
       setDoc(doc(db, 'publicBoard', ticket.id), { status: pendingStatus, resolvedAt }, { merge: true }).catch((e) => console.error('public mirror update failed', e));
       showToast('Status updated to ' + statusMeta(pendingStatus).label);
+      if (pendingStatus === 'done' && ticket.studentEmail) {
+        queueEmail({ to: ticket.studentEmail, subject: 'Your report ' + ticket.code + ' has been resolved', text: 'Good news — the maintenance issue you reported (' + ticket.code + ') has been marked as resolved. If it is not actually fixed, please report it again.' });
+      }
       setPendingStatus(null);
     } catch (e) {
       console.error(e);

@@ -40,6 +40,7 @@ export const STATUSES = [
 ];
 
 export const ROLE_OPTIONS = [
+  { id: 'student', label: 'Student' },
   { id: 'reporter', label: 'RA' },
   { id: 'maintainer', label: 'Maintainer' },
   { id: 'supervisor', label: 'Supervisor' },
@@ -50,7 +51,11 @@ export const ROLE_META = {
   maintainer: { label: 'Maintainer', color: '#5B9BD5' },
   supervisor: { label: 'Supervisor', color: '#4FB477' },
   reporter: { label: 'RA', color: '#8B96AD' },
+  student: { label: 'Student', color: '#A78BFA' },
 };
+// Everyone except students. Staff accounts are created by an admin; students sign themselves up.
+export const STAFF_ROLES = ['admin', 'supervisor', 'maintainer', 'reporter'];
+export const PASSWORD_MIN = 8;
 
 export const ARCHIVE_MS = 7 * 24 * 60 * 60 * 1000;
 
@@ -112,3 +117,14 @@ export const COMMON_ISSUES = {
 
 // For issues that aren't in a numbered room — fills the room field.
 export const COMMON_AREAS = ['Kitchen', 'Laundry', 'Ablution', 'Passage', 'Outside'];
+
+// Accent colour per category — shared by the filter chips, ticket cards and Summary charts.
+export const CATEGORY_COLORS = {
+  electricity: '#F2A93C',
+  plumbing: '#5B9BD5',
+  furniture: '#E8873A',
+  access: '#8B96AD',
+  transport: '#4FB477',
+  wifi: '#A78BFA',
+  inventory: '#F472B6',
+};

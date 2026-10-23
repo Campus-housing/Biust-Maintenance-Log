@@ -133,7 +133,9 @@ export default function SubmissionsPanel({ onClose }) {
       urgent: !!draft.urgent, photo: submission.photo || null,
       status: 'pending', reportedAt: submission.submittedAt || new Date().toISOString(), acceptedAt: new Date().toISOString(),
       resolvedAt: null, semester: semesterForDate(submission.submittedAt).id,
-      reportedByUid: currentUser.uid, notes: [{
+      reportedByUid: currentUser.uid,
+      ...(submission.submittedByUid ? { studentUid: submission.submittedByUid, studentEmail: submission.submittedByEmail || '' } : {}),
+      notes: [{
         text: 'Accepted from a student submission.', byName: name || currentUser.email, byRole: 'system', at: new Date().toISOString(), isSystem: true,
       }],
     };

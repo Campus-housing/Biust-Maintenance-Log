@@ -92,6 +92,16 @@ The owner shared the real tracker; it was read in full (formulas, dropdown valid
 - **Two bugs in my own earlier work, found and fixed.** (1) Bulk import silently dropped any row missing a location or room and then showed a "Thanks!" screen — those reports were lost; now it refuses to submit until every row has a location, and keeps unsent rows after a partial failure so retries never duplicate. (2) The text parser turned a code like `F27` into the location "F", which is a real block (Block F) — but in the tracker `F27` is a floor code inside Old Main Boys, so reports would have been misfiled. A bare code is now a room and the location is left for the reviewer.
 - **Verification:** build 69 modules, 0 errors; lint 0 errors (16 warnings repo-wide, 7 in `src/`); smoke test extended to 26 checks (dashboard drop-downs, search auto-open, status tiles, blank-room ticket, KPIs, bands, trends, drill-down with RA, semesters), all passing.
 
+## v13 — A new look, student accounts, and a security overhaul
+
+- **Visual refresh, component by component** (inspired by the owner's mock-up; nothing else was rewritten): a desktop top bar (brand, Dashboard / Manage / Summary / Export, light–dark switch, Inbox with a count badge, avatar + role, Log out), a large page title with the semester picker, roomier tappable status tiles, colour-coded filter chips with line icons instead of emoji, card-style place rows with chevrons and flag icons, and a total-issues footer. Phones keep their compact header.
+- **Fixed the room-autocomplete glitch** (rows of repeated numbers). Cause: the tracker's Fengyue 3 list contained 150 duplicate entries; duplicate React keys made the browser's native dropdown render stale rows after switching location. The data is now de-duplicated and the native `<datalist>` was replaced with a styled autocomplete that behaves identically in every browser.
+- **Separate student and staff sign-in.** A Student tab (anyone can create an account) and a Staff tab (accounts created by an admin). Signing in on the wrong tab is refused. Students get a *My reports* page tracking each report from "waiting for review" to done.
+- **Admins create accounts for every role** — by **email invite** (the person sets their own password; nothing is shared) or a **temporary password** (forced change on first sign-in) — and can send a **password-reset email** for anyone, **deactivate/reactivate** accounts, and read an **activity log**. Everyone has an Account panel (verify email, change password).
+- **Emails:** verification on sign-up, invite, and password-reset work now (Firebase's built-in emails). Further emails (e.g. "your report was resolved") are wired but switched off until the Trigger Email extension is installed (needs the Blaze plan).
+- **A real security hole, found and closed.** The previous rules let any signed-in user edit their own `assignedBlocks`/`specialty` — so a student could make themselves the RA of any block (reading that block's reports and contact numbers, accepting submissions) and a maintainer could grant themselves every category — and a new account could be created with arbitrary blocks. Users can now change only their own name, last-login time and clear their own "must change password" flag; self sign-up can create only a plain student record; deactivated accounts lose all permissions; students cannot create/read tickets or write the public board; maintainers and RAs can no longer list accounts; the audit log is append-only. **Publish the new rules in the Firebase console** (`firestore.rules`).
+- **Verification:** build 78 modules, 0 errors; lint 0 errors (18 warnings repo-wide, 9 in `src/`); smoke test now 62 checks, all passing, including the full account journey (sign-up validation, tab separation, invite and temporary-password accounts, forced password change, admin reset, deactivation, audit log). **The new security rules have not been run against a Firestore emulator** (it can't be downloaded here); a 22-check suite is in `tools/rules-test/` — run it before relying on them.
+
 ## How the app has improved
 
 | | v1 (Claude artifact) | Now |
@@ -109,6 +119,7 @@ The owner shared the real tracker; it was read in full (formulas, dropdown valid
 | Look and feel | Fixed dark theme | Dark/light toggle, confirmation toasts |
 | Reporting on performance | None | Resolution-time analytics, semester views with automatic carry-over |
 | Replacing the SharePoint tracker | — | Every tracker function covered (docs/TRACKER-PARITY.md) + importer for its history |
+| Accounts and security | Everyone self-signed-up as an "RA"; rules let users edit their own blocks | Student and staff sign-in, admin-created accounts of every role (email invite or temporary password), reset/deactivate, audit log, hardened rules |
 | Setup | N/A | One README + one DOCUMENTATION.md, step by step |
 
 ## Where to take it next

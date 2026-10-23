@@ -133,3 +133,77 @@ textarea#formDesc { margin-bottom:12px; }
 .empty-locations { font-size:11px; color:var(--dim); line-height:1.7; margin:2px 2px 6px; }
 .stat-card-btn { font-family:inherit; cursor:pointer; color:inherit; }
 .section-panel:last-of-type { margin-bottom: 90px; }
+
+/* ===================== visual refresh: top bar, header, tiles, chips, rows ===================== */
+/* Top bar (desktop only — rendered by TopBar.jsx) */
+.topbar { position: sticky; top: 0; z-index: 40; background: var(--bg); border-bottom: 1px solid var(--border); }
+@supports (background: color-mix(in srgb, red 50%, transparent)) {
+  .topbar { background: color-mix(in srgb, var(--bg) 86%, transparent); backdrop-filter: blur(10px); }
+}
+.topbar-inner { max-width: 1240px; margin: 0 auto; padding: 12px 24px; display: flex; align-items: center; gap: 22px; }
+.topbar-brand { display: flex; align-items: center; gap: 12px; font-weight: 700; font-size: 18px; white-space: nowrap; }
+.brand-mark { width: 38px; height: 38px; border-radius: 11px; background: #F2A93C; color: #0B1220; display: inline-flex; align-items: center; justify-content: center; }
+.topbar-nav { display: flex; gap: 4px; }
+.nav-tab { background: transparent; border: none; color: var(--muted); font-family: inherit; font-size: 14px; padding: 9px 16px; border-radius: 11px; cursor: pointer; }
+.nav-tab:hover { color: var(--text); }
+.nav-tab-active { background: var(--card); color: var(--text); }
+.topbar-right { margin-left: auto; display: flex; align-items: center; gap: 14px; }
+.theme-seg { display: flex; background: var(--card); border: 1px solid var(--border); border-radius: 11px; padding: 3px; }
+.theme-seg button { background: transparent; border: none; color: var(--dim); width: 34px; height: 28px; border-radius: 8px; display: inline-flex; align-items: center; justify-content: center; cursor: pointer; }
+.theme-seg button[aria-pressed="true"] { background: var(--border); color: var(--text); }
+.inbox-pill { display: inline-flex; align-items: center; gap: 8px; background: var(--card); border: 1px solid var(--border); color: var(--text); border-radius: 11px; padding: 8px 14px; font-family: inherit; font-size: 14px; cursor: pointer; }
+.count-badge { background: #F2A93C; color: #0B1220; font-size: 11px; font-weight: 700; border-radius: 9999px; padding: 1px 8px; }
+.topbar-user { display: flex; align-items: center; gap: 10px; padding-left: 14px; border-left: 1px solid var(--border); }
+.avatar { width: 38px; height: 38px; border-radius: 50%; background: #F2A93C22; color: #F2A93C; border: 1px solid #F2A93C55; display: inline-flex; align-items: center; justify-content: center; font-weight: 700; font-size: 13px; font-family: 'Space Grotesk', sans-serif; flex-shrink: 0; }
+.topbar-user-text { display: flex; flex-direction: column; gap: 4px; line-height: 1.1; }
+.topbar-user-name { font-size: 14px; font-weight: 600; }
+.topbar-user-meta { display: flex; align-items: center; gap: 6px; }
+.logout-btn { background: transparent; border: 1px solid var(--border); color: var(--muted); border-radius: 11px; padding: 8px 14px; font-family: inherit; font-size: 14px; cursor: pointer; }
+.logout-btn:hover { color: var(--text); border-color: var(--border-soft); }
+
+/* Page header (desktop) */
+.page-header { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; margin-bottom: 22px; }
+.page-title { font-size: 26px; line-height: 1.2; font-weight: 600; margin: 0 0 6px; }
+.page-sub { margin: 0; color: var(--muted); font-size: 14px; }
+.page-semester { display: flex; align-items: center; gap: 8px; font-size: 12px; white-space: nowrap; padding-top: 4px; }
+
+/* Stat tiles — roomier, left-aligned */
+.stat-card { padding: 12px 12px; text-align: left; border-radius: 14px; }
+.stat-num { font-size: 24px; line-height: 1.1; }
+.stat-label { font-size: 11px; margin-top: 5px; }
+.stats-grid { gap: 10px; }
+
+/* Search + chips */
+.search-wrap .input { padding: 13px 14px 13px 42px; border-radius: 16px; font-size: 14px; }
+.search-icon { display: inline-flex; left: 15px; }
+.chip { display: inline-flex; align-items: center; gap: 7px; padding: 7px 14px; font-size: 13px; }
+
+/* Dashboard tiles + place rows */
+.section-tile { padding: 14px 16px; border-radius: 16px; }
+.tile-title-main { display: inline-flex; align-items: center; gap: 9px; }
+.tile-icon { width: 28px; height: 28px; border-radius: 9px; background: #5B9BD522; color: #5B9BD5; display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0; }
+.chev { color: var(--dim); transition: transform .15s ease; flex-shrink: 0; }
+.chev-open { transform: rotate(90deg); }
+.block-group-header { background: var(--card); border: 1px solid var(--border); border-radius: 16px; padding: 14px 16px; transition: border-color .12s ease; }
+.block-group-header:hover { border-color: var(--border-soft); }
+.block-group-title { font-size: 15px; display: flex; align-items: center; }
+.block-group-count { background: transparent; border-color: var(--border-soft); padding: 2px 11px; }
+.block-group-body { margin-top: 10px; }
+.board-footer { text-align: center; color: var(--dim); font-size: 12px; margin: 22px 0 0; }
+
+@media (min-width: 900px) {
+  .wrap { max-width: 680px; padding-top: 30px; }
+  .stats-grid { gap: 14px; }
+  .stat-card { padding: 18px 20px; border-radius: 16px; }
+  .stat-num { font-size: 32px; }
+  .stat-label { font-size: 13px; margin-top: 6px; }
+}
+
+/* Room autocomplete (RoomField) */
+.combo { position: relative; }
+.combo-list { position: absolute; z-index: 30; left: 0; right: 0; top: 100%; margin: 4px 0 0; padding: 4px; list-style: none; background: var(--card); border: 1px solid var(--border-soft); border-radius: 12px; max-height: 240px; overflow-y: auto; box-shadow: 0 12px 28px rgba(0,0,0,.35); }
+.combo-opt { padding: 9px 11px; border-radius: 8px; font-size: 13px; cursor: pointer; }
+.combo-opt:hover, .combo-opt-active { background: var(--border); }
+.combo-more { padding: 6px 11px; font-size: 11px; color: var(--dim); }
+button.topbar-user { background: transparent; border-top: none; border-right: none; border-bottom: none; color: inherit; font-family: inherit; text-align: left; cursor: pointer; }
+button.topbar-user:hover .topbar-user-name { color: #F2A93C; }

@@ -1,3 +1,5 @@
+import { CATEGORY_COLORS } from '../utils/constants';
+import { CategoryIcon } from './icons';
 import { categoryMeta, statusMeta, formatDate, blockLabel, roomLabel, openAgeMs, formatAge, ageColor } from '../utils/helpers';
 
 export default function TicketCard({ ticket, onOpen, onOpenPhoto }) {
@@ -32,7 +34,7 @@ export default function TicketCard({ ticket, onOpen, onOpenPhoto }) {
           {Array.isArray(ticket.notes) && ticket.notes.length > 0 && (
             <span className="dim mono" style={{ fontSize: 10 }}>💬{ticket.notes.length}</span>
           )}
-          <span className="cat-icon">{cat.icon}</span>
+          <span className="cat-icon" style={{ color: CATEGORY_COLORS[ticket.category] || 'var(--muted)', display: 'inline-flex' }}><CategoryIcon id={ticket.category} size={18} /></span>
         </div>
       </div>
       <div className="ticket-title display">{blockLabel(ticket.block)} · {roomLabel(ticket.room)}</div>
