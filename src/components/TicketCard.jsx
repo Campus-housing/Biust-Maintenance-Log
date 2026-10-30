@@ -1,9 +1,8 @@
 import { CATEGORY_COLORS } from '../utils/constants';
 import { CategoryIcon } from './icons';
-import { categoryMeta, statusMeta, formatDate, blockLabel, roomLabel, openAgeMs, formatAge, ageColor } from '../utils/helpers';
+import { statusMeta, formatDate, blockLabel, roomLabel, openAgeMs, formatAge, ageColor } from '../utils/helpers';
 
 export default function TicketCard({ ticket, onOpen, onOpenPhoto }) {
-  const cat = categoryMeta(ticket.category);
   const st = statusMeta(ticket.status);
   const urgentActive = ticket.urgent && ticket.status !== 'done';
   const borderColor = urgentActive ? '#E15554' : st.color;

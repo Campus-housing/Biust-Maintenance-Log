@@ -17,18 +17,34 @@ function Chip({ active, color, onClick, children }) {
 export default function Filters({ tickets, search, setSearch, filterStatus, setFilterStatus, filterCategory, setFilterCategory, filterUrgent, setFilterUrgent }) {
   const archivedCount = tickets.filter(isArchived).length;
   const urgentCount = tickets.filter((t) => t.urgent && t.status !== 'done' && !isArchived(t)).length;
+  const hasActiveFilters = !!search.trim() || filterStatus !== 'all' || filterCategory !== 'all' || filterUrgent;
 
   return (
-    <>
+    <div className="filters-panel">
+      <div className="filter-heading-row">
+        <div>
+          <p className="section-kicker">Find an issue</p>
+          <p className="filter-hint">Search by room, location, category, or description.</p>
+        </div>
+        {hasActiveFilters && (
+          <button
+            type="button"
+            className="clear-filters"
+            onClick={() => { setSearch(''); setFilterStatus('all'); setFilterCategory('all'); setFilterUrgent(false); }}
+          >Clear filters</button>
+        )}
+      </div>
       <div className="search-wrap">
         <span className="search-icon"><SearchIcon size={18} /></span>
         <input
           id="searchInput"
           className="input"
+          aria-label="Search issues"
           placeholder="Search room, location, description..."
           value={search}
           onChange={(e) => setSearch(e.target.value)}
         />
+        {search && <button type="button" className="search-clear" onClick={() => setSearch('')} aria-label="Clear search">✕</button>}
       </div>
       <div className="chip-row">
         <Chip active={filterStatus === 'all'} onClick={() => setFilterStatus('all')}>All status</Chip>
@@ -54,6 +70,6 @@ export default function Filters({ tickets, search, setSearch, filterStatus, setF
           <FlagIcon size={14} /> Urgent ({urgentCount})
         </button>
       </div>
-    </>
+    </div>
   );
 }
