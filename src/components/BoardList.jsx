@@ -9,6 +9,7 @@ const FACILITY_NAMES = FACILITIES_GROUP ? FACILITIES_GROUP.options : [];
 export default function BoardList({ tickets, loading, search, filterStatus, filterCategory, filterUrgent, onOpen, onOpenPhoto }) {
   const [openSections, setOpenSections] = useState(() => new Set());
   const [openLocations, setOpenLocations] = useState(() => new Set());
+  const [hasInitialised, setHasInitialised] = useState(false);
 
   const filtered = useMemo(() => {
     return tickets
@@ -61,6 +62,14 @@ export default function BoardList({ tickets, loading, search, filterStatus, filt
     });
   }, [byBlock]);
 
+  // Give first-time visitors a useful starting point without expanding every location.
+  useEffect(() => {
+    if (hasInitialised || search.trim() || !sections.length) return;
+    const firstWithReports = sections.find((s) => s.withReports.length);
+    if (firstWithReports) setOpenSections(new Set([firstWithReports.key]));
+    setHasInitialised(true);
+  }, [sections, search, hasInitialised]);
+
   // While searching, open everything that has a match so results are never hidden behind a closed menu.
   useEffect(() => {
     if (!search.trim()) return;
@@ -84,6 +93,13 @@ export default function BoardList({ tickets, loading, search, filterStatus, filt
 
   return (
     <div>
+      <div className="board-list-toolbar">
+        <div>
+          <p className="section-kicker">Work queue</p>
+          <h2 className="board-list-title">Active locations</h2>
+        </div>
+        <span className="results-count">{filtered.length} {filtered.length === 1 ? 'issue' : 'issues'}</span>
+      </div>
       <div className="section-tiles" style={sections.length > 2 ? { gridTemplateColumns: '1fr 1fr 1fr' } : undefined}>
         {sections.map((s) => (
           <button
