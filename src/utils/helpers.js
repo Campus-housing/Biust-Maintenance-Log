@@ -1,4 +1,4 @@
-import { CATEGORIES, STATUSES, SPECIALTIES, ARCHIVE_MS, RESIDENTIAL_BLOCKS, SEMESTERS, PASSWORD_MIN } from './constants';
+import { CATEGORIES, STATUSES, SPECIALTIES, ARCHIVE_MS, RESIDENTIAL_BLOCKS, SEMESTERS, PASSWORD_MIN, SLA_HOURS, DEFAULT_SLA_HOURS, URGENT_SLA_HOURS, NO_ACCESS_ALERT_DAYS, UNASSIGNED_ALERT_HOURS } from './constants';
 
 export function categoryMeta(id) {
   return CATEGORIES.find((c) => c.id === id) || CATEGORIES[3];
@@ -203,4 +203,77 @@ export function monthKey(iso) {
 }
 export function monthLabel(key) {
   return new Date(key + '-01T00:00:00Z').toLocaleDateString('en-GB', { month: 'short', year: '2-digit', timeZone: 'UTC' });
+}
+
+
+// ---------- Service targets (SLAs), attention and hotspots ----------
+export function slaTargetMs(t) {
+  const base = SLA_HOURS[t.category] || DEFAULT_SLA_HOURS;
+  return (t.urgent ? Math.min(URGENT_SLA_HOURS, base) : base) * 3600000;
+}
+// 'met' / 'breached' for resolved tickets; 'ontrack' / 'overdue' for open ones.
+export function slaState(t) {
+  const target = slaTargetMs(t);
+  if (t.status === 'done') {
+    const ms = resolutionMs(t);
+    return ms === null ? null : ms <= target ? 'met' : 'breached';
+  }
+  const age = openAgeMs(t);
+  return age === null ? null : age > target ? 'overdue' : 'ontrack';
+}
+export function formatTarget(hours) {
+  return hours < 48 ? hours + 'h' : Math.round(hours / 24) + 'd';
+}
+// Why an open ticket needs someone's attention (empty = it doesn't).
+export function attentionReasons(t) {
+  if (t.status === 'done') return [];
+  const age = openAgeMs(t);
+  if (age === null) return [];
+  const out = [];
+  const target = slaTargetMs(t);
+  if (age > target) out.push({ id: 'overdue', label: 'Overdue by ' + formatDuration(age - target), score: 3 + (age - target) / target });
+  if (t.status === 'no_access' && age > NO_ACCESS_ALERT_DAYS * 86400000) out.push({ id: 'noaccess', label: 'No access for ' + formatAge(age), score: 2 });
+  if (!t.assignedTo && age > UNASSIGNED_ALERT_HOURS * 3600000) out.push({ id: 'unassigned', label: 'Unassigned ' + formatAge(age), score: 1 });
+  return out;
+}
+export function attentionList(tickets) {
+  return tickets
+    .map((t) => ({ t, reasons: attentionReasons(t) }))
+    .filter((r) => r.reasons.length)
+    .sort((a, b) => b.reasons.reduce((n, r) => n + r.score, 0) - a.reasons.reduce((n, r) => n + r.score, 0));
+}
+// Rooms with several reports.
+export function hotspotRooms(tickets, limit = 10) {
+  const map = new Map();
+  tickets.forEach((t) => {
+    const room = String(t.room || '').trim();
+    if (!room) return;
+    const key = t.block + '|' + room.toLowerCase();
+    if (!map.has(key)) map.set(key, { block: t.block, room, count: 0, cats: {}, last: 0 });
+    const g = map.get(key);
+    g.count++;
+    g.cats[t.category] = (g.cats[t.category] || 0) + 1;
+    g.last = Math.max(g.last, new Date(t.reportedAt).getTime());
+  });
+  return [...map.values()].filter((g) => g.count >= 2).sort((a, b) => b.count - a.count || b.last - a.last).slice(0, limit);
+}
+// The same fault in the same room coming back within a couple of months — a sign the first repair didn't hold.
+export function repeatFaults(tickets, windowDays = 60, limit = 10) {
+  const groups = new Map();
+  tickets.forEach((t) => {
+    const room = String(t.room || '').trim();
+    if (!room || !t.reportedAt) return;
+    const key = t.block + '|' + room.toLowerCase() + '|' + t.category;
+    if (!groups.has(key)) groups.set(key, { block: t.block, room, category: t.category, times: [] });
+    groups.get(key).times.push(new Date(t.reportedAt).getTime());
+  });
+  const win = windowDays * 86400000;
+  const out = [];
+  groups.forEach((g) => {
+    g.times.sort((a, b) => a - b);
+    let repeats = 0;
+    for (let i = 1; i < g.times.length; i++) if (g.times[i] - g.times[i - 1] <= win) repeats++;
+    if (repeats > 0) out.push({ ...g, reports: g.times.length, repeats, last: g.times[g.times.length - 1] });
+  });
+  return out.sort((a, b) => b.repeats - a.repeats || b.last - a.last).slice(0, limit);
 }

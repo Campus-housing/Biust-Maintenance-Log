@@ -6,6 +6,7 @@ import { parseIssueText, parseIssueFile } from '../utils/parseIssues';
 import RoomField from './RoomField';
 import AreaChips from './AreaChips';
 import IssueChips from './IssueChips';
+import SimilarWarning from './SimilarWarning';
 
 function newSubmissionBase(student) {
   return {
@@ -192,7 +193,7 @@ export default function SubmissionForm({ onClose, student }) {
               </div>
               <RoomField block={block} value={room} onChange={setRoom} />
             </div>
-            <AreaChips value={room} onPick={setRoom} />
+            <AreaChips block={block} value={room} onPick={setRoom} />
             <div>
               <label className="field-label">Category</label>
               <div className="cat-grid">
@@ -240,6 +241,7 @@ export default function SubmissionForm({ onClose, student }) {
                 🚩 Urgent
               </button>
             </div>
+            <SimilarWarning block={block} room={room} category={category} />
             {error && <p className="form-error">{error}</p>}
             <button type="button" className="submit-btn" disabled={saving} onClick={submitSingle}>
               {saving ? 'Sending...' : 'Send for review'}

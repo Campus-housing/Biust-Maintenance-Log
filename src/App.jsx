@@ -23,11 +23,12 @@ import ChangePasswordScreen from './components/ChangePasswordScreen';
 import SemesterSelect from './components/SemesterSelect';
 import TopBar from './components/TopBar';
 import PageHeader from './components/PageHeader';
+import AttentionList from './components/AttentionList';
 import { currentSemester, scopeToSemester } from './utils/helpers';
 import { SEMESTERS } from './utils/constants';
 
 export default function App() {
-  const { initializing, currentUser, publicMode, isBoardView, isStudent, mustChangePassword, name: accountName } = useAuth();
+  const { initializing, currentUser, publicMode, isBoardView, isStudent, isAdmin, isMaintainer, mustChangePassword, name: accountName } = useAuth();
   const { tickets, loading, error } = useTickets();
   const { theme, toggleTheme } = useTheme();
   const isDesktop = useMediaQuery('(min-width: 900px)');
@@ -37,6 +38,7 @@ export default function App() {
   const [filterStatus, setFilterStatus] = useState('all');
   const [filterCategory, setFilterCategory] = useState('all');
   const [filterUrgent, setFilterUrgent] = useState(false);
+  const [filterAssign, setFilterAssign] = useState('all');
 
   const [formOpen, setFormOpen] = useState(false);
   const [detailTicketId, setDetailTicketId] = useState(null);
@@ -63,39 +65,37 @@ export default function App() {
   const semesterLabel = semesterId === 'all' ? 'All semesters' : (SEMESTERS.find((s) => s.id === semesterId) || {}).label;
 
   return (
-    <div className="app-frame">
+    <div>
       {isDesktop && (
         <TopBar
           tickets={tickets} board={board} theme={theme} onToggleTheme={toggleTheme}
           onOpenManage={() => setAdminOpen(true)} onOpenSummary={() => setSummaryOpen(true)} onOpenInbox={() => setInboxOpen(true)} onOpenAccount={() => setAccountOpen(true)}
         />
       )}
-      <main className="wrap app-content">
+      <div className="wrap">
         {isDesktop ? (
           <PageHeader board={board} semesterId={semesterId} semesterLabel={semesterLabel} onSemesterChange={setSemesterId} />
         ) : (
           <>
             <div className="header-row">
-              <div>
-                <p className="mobile-eyebrow">BIUST · OPERATIONS</p>
-                <h1 className="display">M&amp;F Log</h1>
-              </div>
-              <div className="mobile-header-actions">
+              <h1 className="display">BIUST M&amp;F Log</h1>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                 <ThemeToggle theme={theme} onToggle={toggleTheme} />
-                {!isStudent && <span className="mono dim mobile-total">{visibleTickets.length}{board ? ' total' : visibleTickets.length === 1 ? ' report' : ' reports'}</span>}
+                {!isStudent && <span className="mono dim">{visibleTickets.length}{board ? ' total' : visibleTickets.length === 1 ? ' report' : ' reports'}</span>}
               </div>
             </div>
             <IdentityCard tickets={tickets} onOpenManage={() => setAdminOpen(true)} onOpenSummary={() => setSummaryOpen(true)} onOpenInbox={() => setInboxOpen(true)} onOpenAccount={() => setAccountOpen(true)} />
-            <p className="subtitle">{board ? 'A live view of campus maintenance' : "Track the issues you've reported"}</p>
+            <p className="subtitle">{board ? 'Report and track campus maintenance issues' : "Track the issues you've reported"}</p>
 
             {board && (
-              <div className="mobile-semester-row">
-                <span className="dim">Current view</span>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+                <span className="dim" style={{ fontSize: 11 }}>Showing</span>
                 <SemesterSelect value={semesterId} onChange={setSemesterId} />
               </div>
             )}
           </>
         )}
+        {board && !publicMode && <AttentionList tickets={visibleTickets} onOpen={setDetailTicketId} />}
         {board && <StatsGrid tickets={visibleTickets} activeStatus={filterStatus} onSelect={setFilterStatus} />}
         {board && (
           <Filters
@@ -104,6 +104,7 @@ export default function App() {
             filterStatus={filterStatus} setFilterStatus={setFilterStatus}
             filterCategory={filterCategory} setFilterCategory={setFilterCategory}
             filterUrgent={filterUrgent} setFilterUrgent={setFilterUrgent}
+            filterAssign={filterAssign} setFilterAssign={setFilterAssign} showMine={isAdmin || isMaintainer}
           />
         )}
 
@@ -112,7 +113,7 @@ export default function App() {
         {board ? (
           <BoardList
             tickets={visibleTickets} loading={loading}
-            search={search} filterStatus={filterStatus} filterCategory={filterCategory} filterUrgent={filterUrgent}
+            search={search} filterStatus={filterStatus} filterCategory={filterCategory} filterUrgent={filterUrgent} filterAssign={filterAssign} meUid={currentUser ? currentUser.uid : ''}
             onOpen={setDetailTicketId} onOpenPhoto={setPhotoUrl}
           />
         ) : isStudent ? (
@@ -122,14 +123,12 @@ export default function App() {
         )}
 
         {board && !loading && visibleTickets.length > 0 && (
-          <p className="board-footer"><span className="live-dot"></span>{visibleTickets.length} total {visibleTickets.length === 1 ? 'issue' : 'issues'} · {semesterLabel}</p>
+          <p className="board-footer">{visibleTickets.length} total {visibleTickets.length === 1 ? 'issue' : 'issues'} · {semesterLabel}</p>
         )}
-      </main>
+      </div>
 
-      {currentUser && !isStudent && (
-        <button type="button" className="fab" aria-label="Report an issue" onClick={() => setFormOpen(true)}>
-          <span className="fab-plus">+</span><span className="fab-label">Report issue</span>
-        </button>
+      {currentUser && (
+        <button type="button" className="fab" aria-label="Report an issue" onClick={() => setFormOpen(true)}>+</button>
       )}
 
       {formOpen && (isStudent

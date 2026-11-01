@@ -18,6 +18,7 @@ Full technical reference for the BIUST Maintenance & Facilities Log. See [README
 - [The board (dashboard)](#the-board-dashboard)
 - [Rooms, common areas and quick picks](#rooms-common-areas-and-quick-picks)
 - [Importing the legacy tracker](#importing-the-legacy-tracker)
+- [Importing reports from WhatsApp](#importing-reports-from-whatsapp)
 - [Accounts and sign-in](#accounts-and-sign-in)
 - [Security model](#security-model)
 - [Emails](#emails)
@@ -166,6 +167,7 @@ A raw, unreviewed report — created without any login, by a student reporting a
 
 - `users`: `active` (false = deactivated; missing counts as active), `mustChangePassword` (true until the person picks their own password), `lastLoginAt`. `role` may now be `student`.
 - `submissions`: `submittedByUid` / `submittedByEmail` when a signed-in student sent it (must equal the sender's own uid/email).
+- `submissions` and `tickets`: `source` (`whatsapp` when imported from a chat), `sourceKey` (a fingerprint used to stop the same message being imported twice), and — on submissions only — `originalReportedAt` (the real report date, e.g. the WhatsApp message time, which becomes the ticket's `reportedAt` when accepted) and `importedByUid`.
 - `tickets`: `studentUid` / `studentEmail` when the ticket came from a signed-in student's report (never copied to `publicBoard`).
 - `auditLog/{id}`: `at, byUid, byName, action, targetEmail, …` — append-only admin activity (admin-only read/write).
 - `mail/{id}`: `to, message{subject,text}` — outgoing email queue, used only once the Trigger Email extension is installed.
@@ -265,7 +267,9 @@ service cloud.firestore {
                     && request.resource.data.description is string
                     && request.resource.data.description.size() < 2000
                     && (!('submittedByUid' in request.resource.data) || request.resource.data.submittedByUid == request.auth.uid)
-                    && (!('submittedByEmail' in request.resource.data) || request.resource.data.submittedByEmail == request.auth.token.email);
+                    && (!('submittedByEmail' in request.resource.data) || request.resource.data.submittedByEmail == request.auth.token.email)
+                    // Only team members (importing e.g. a WhatsApp backlog) may carry an earlier report date.
+                    && (!('originalReportedAt' in request.resource.data) || isTeam());
       // The RA for that block, admin, and the student who sent it.
       allow read: if isAdmin()
                     || (isReporter() && resource.data.block in myAssignedBlocks())
@@ -312,6 +316,7 @@ service cloud.firestore {
 - Only admin and supervisor can list accounts (for RA names); maintainers and RAs cannot.
 - A student reads only the submissions that carry their own uid; a signed-in student cannot submit under someone else's uid or email.
 - `auditLog` is append-only and admin-only; `mail` can be written by the team but never read back.
+- Only team members (admin, supervisor, maintainer, RA) may attach an `originalReportedAt` to a submission, so nobody anonymous or a student can backdate a report.
 
 ## Roles, in detail
 
@@ -392,7 +397,7 @@ The board opens as two tiles — **Residences** and **Campus facilities** — ea
 ## Rooms, common areas and quick picks
 
 - **Room is optional.** Kitchens, laundries, ablutions, passages and outdoor areas have no room number. Leave it blank or tap a chip (Kitchen · Laundry · Ablution · Passage · Outside).
-- **Room autocomplete** (`src/utils/rooms.js`) offers the valid rooms and named common areas for the chosen location, taken from the legacy tracker's validation lists (25 residences). It is a suggestion only — anything typed is accepted. Campus facilities have no list.
+- **Room autocomplete** (`src/utils/rooms.js`) opens with a labelled **Common areas** group first — Kitchenette, Ablution, Common room, Laundry room, Passage / corridor, Stairwell, Entrance / lobby, Study room, Outside / grounds for every residence, plus any the tracker named specifically (e.g. `Ablution-R47`) — then a **Rooms** group (the tracker's per-location room numbers, de-duplicated). Each campus facility has its own areas (e.g. Refectory: Dining hall, Kitchen, Serving area, Toilets). The quick chips under the field offer the first six areas for the chosen location. Suggestions only: anything typed is accepted. The area lists are plain arrays at the bottom of `rooms.js` — edit them to match reality.
 - **Common-issue chips** (`COMMON_ISSUES` in `constants.js`) fill the description with one tap per usual problem in the chosen category; electricity, plumbing, carpentry and inventory come from the tracker's own lists. Tapping several joins them with "; ".
 - Bulk import: a bare code such as `F27` or `S3` becomes the **room** (`S3` → `S03` to match the lists) and the location is left for the reviewer. A location is only filled in when the text names one ("BPC", "Block 4", "Old Sekgoma 3", "Fengyue 2"). Rows still missing a location block the submit with a message instead of being dropped.
 
@@ -412,6 +417,21 @@ node tools/import-legacy/import.mjs  <file.xlsx> --commit --service-account <key
 - Dates are read day-first (`--month-first` to change). The sheet's own "Resolution Time" column is ignored (it mixes units).
 - **The commit path has not been run against a real Firebase project** — only the dry run is tested. Try it on a throwaway project or the emulator first.
 - The spreadsheet contains personal data (contact numbers): keep it out of git (`legacy-data/` and `*.service-account.json` are git-ignored).
+
+## Importing reports from WhatsApp
+
+**Can the app connect to WhatsApp? Not live, and not to your existing groups.**
+- *WhatsApp Business API* (the official one) works with a dedicated business number and can only receive messages sent to that number from now on; it cannot read existing groups or old messages, and it needs a server (Cloud Functions, i.e. the paid Blaze plan), Meta business verification, and per-conversation fees. A reasonable future option only if you want a chat-bot style intake.
+- *Unofficial tools* that log into a personal WhatsApp account can read groups, but they break WhatsApp's terms (accounts get banned), need a server holding your logged-in session, and sweep up every group member's private messages. Not built, not recommended.
+- **What works today and is built:** WhatsApp's own **Export chat**. The importer reads that file on your device.
+
+**How to use it.** On the phone that is in the group: open the group → ⋮ → *More* → *Export chat* → **Without media**; save/share the file to the device you use for this app. Then in the app: **Inbox → Import from WhatsApp** (admins and RAs) → pick a default location (optional) → choose the file (.txt, or the .zip iPhones produce). Review the list, untick anything that isn't a real outstanding report, fix locations/rooms, and **Send to the Inbox**. Admins can then press **Accept all**; RAs review and accept as usual (RAs can only import into their own blocks).
+
+**What it understands.** Android and iPhone export formats (day-first dates by default; a "month-first" tick-box; auto-detects month-first files); multi-line messages; header lines such as `OLD MAIN BOYS ISSUES` / `ELECTRICITY` / `PLUMBING` that set the location and category for the lines under them; lines like `F27 lights not working 71441150` (room `F27`, phone number as the contact; `S3` becomes `S03` to match the room lists); Setswana "hae bereke"; and replies such as `F27 done` / `fixed` / `attended`, which mark earlier reports for that room as *probably already fixed* (hidden and unticked by default — show them with the tick-box). Photos/media, system messages and chatter are ignored.
+
+**What it does not do.** It cannot know a report is fixed unless someone said so in the chat — always sanity-check the list. Every row is reviewed by a person; nothing is saved until you press Send. Importing the same chat twice is safe: each message has a fingerprint, and already-imported rows are flagged and unticked (the check covers what the importing user can see). The original message time becomes the ticket's report date, so ageing, SLAs and analytics reflect how long a fault has really been waiting.
+
+**Privacy.** The chat file contains other people's names and numbers. It is parsed in your browser and never uploaded; only the reports you send are stored (with the sender's display name as "reported by"). Don't commit exported chats to git.
 
 ## Accounts and sign-in
 
@@ -433,7 +453,7 @@ node tools/import-legacy/import.mjs  <file.xlsx> --commit --service-account <key
 
 ## Security model
 
-Authority lives in `firestore.rules`; the UI only hides things for convenience. The rules were rewritten in this round (see the bullets under [Security rules](#security-rules)) and tests are in `tools/rules-test/` (22 checks; run `npm install && npm test` in that folder — needs Java and the Firebase CLI). **At the time of writing the tests had not been run** (the emulator could not be downloaded), so run them before relying on the rules; you can also try the cases in the Firebase console's *Rules Playground*.
+Authority lives in `firestore.rules`; the UI only hides things for convenience. The rules were rewritten in this round (see the bullets under [Security rules](#security-rules)) and tests are in `tools/rules-test/` (19 tests; run `npm install && npm test` in that folder — needs Java and the Firebase CLI). **At the time of writing the tests had not been run** (the emulator could not be downloaded), so run them before relying on the rules; you can also try the cases in the Firebase console's *Rules Playground*.
 
 **Roll-out order matters:** publish the new rules in the Firebase console **before** (or together with) deploying the app. The new app code works with the new rules; old app code still works with them except that *new self sign-ups* from an old page would be refused (they'd try to create an "RA").
 

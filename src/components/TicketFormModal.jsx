@@ -8,6 +8,7 @@ import { makeTicketCode, publicMirror, currentSemester } from '../utils/helpers'
 import RoomField from './RoomField';
 import AreaChips from './AreaChips';
 import IssueChips from './IssueChips';
+import SimilarWarning from './SimilarWarning';
 
 function visibleBlockGroups({ canManageTickets, canSeeOversight, assignedBlocks }) {
   if (canManageTickets || canSeeOversight) return BLOCK_GROUPS;
@@ -114,7 +115,7 @@ export default function TicketFormModal({ onClose }) {
               </div>
               <RoomField block={block} value={room} onChange={setRoom} />
             </div>
-            <AreaChips value={room} onPick={setRoom} />
+            <AreaChips block={block} value={room} onPick={setRoom} />
 
             <div>
               <label className="field-label">Category</label>
@@ -167,6 +168,7 @@ export default function TicketFormModal({ onClose }) {
               </button>
             </div>
 
+            <SimilarWarning block={block} room={room} category={category} />
             {error && <p className="form-error">{error}</p>}
             <button type="button" className="submit-btn" disabled={saving} onClick={submit}>
               {saving ? 'Saving...' : 'Submit ticket'}

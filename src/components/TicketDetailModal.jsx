@@ -1,6 +1,6 @@
-import { useState } from 'react';
-import { doc, updateDoc, deleteDoc, setDoc, arrayUnion } from 'firebase/firestore';
-import { db } from '../firebase';
+import { useEffect, useState } from 'react';
+import { doc, updateDoc, deleteDoc, setDoc, arrayUnion, getDocs } from 'firebase/firestore';
+import { db, usersCol } from '../firebase';
 import { useAuth } from '../contexts/AuthContext';
 import { useToast } from '../contexts/ToastContext';
 import { queueEmail } from '../utils/mail';
@@ -8,7 +8,7 @@ import { STATUSES } from '../utils/constants';
 import { categoryMeta, statusMeta, formatDate, blockLabel, roomLabel, openAgeMs, formatAge } from '../utils/helpers';
 
 export default function TicketDetailModal({ ticket, onClose, onOpenPhoto }) {
-  const { currentUser, name, role, canManageTickets } = useAuth();
+  const { currentUser, name, role, canManageTickets, isAdmin } = useAuth();
   const showToast = useToast();
   const [pendingStatus, setPendingStatus] = useState(null);
   const [statusSaving, setStatusSaving] = useState(false);
@@ -19,6 +19,37 @@ export default function TicketDetailModal({ ticket, onClose, onOpenPhoto }) {
   const [pendingDelete, setPendingDelete] = useState(false);
   const [deleteError, setDeleteError] = useState('');
   const [deleting, setDeleting] = useState(false);
+  const [assignees, setAssignees] = useState([]); // admin only: maintainers who could take this ticket
+  const [assignBusy, setAssignBusy] = useState(false);
+  const me = currentUser ? { uid: currentUser.uid, name: name || currentUser.email } : null;
+
+  useEffect(() => {
+    if (!isAdmin) return undefined;
+    let alive = true;
+    getDocs(usersCol)
+      .then((snap) => {
+        if (!alive) return;
+        setAssignees(snap.docs.map((d) => ({ id: d.id, ...d.data() }))
+          .filter((u) => u.role === 'maintainer' && u.active !== false && (!u.specialty || u.specialty === 'all' || u.specialty === ticket.category))
+          .sort((a, b) => (a.name || '').localeCompare(b.name || '')));
+      })
+      .catch((e) => console.error('could not load maintainers', e));
+    return () => { alive = false; };
+  }, [isAdmin, ticket.category]);
+
+  async function setAssignee(target) {
+    setAssignBusy(true); setStatusError('');
+    const note = { text: target ? 'Assigned to ' + target.name + '.' : 'Unassigned.', byName: me.name, byRole: role || 'staff', at: new Date().toISOString(), isSystem: true };
+    try {
+      await updateDoc(doc(db, 'tickets', ticket.id), { assignedTo: target, notes: arrayUnion(note) });
+      showToast(target ? 'Assigned to ' + target.name : 'Unassigned');
+    } catch (e) {
+      console.error(e);
+      setStatusError('Could not change the assignment. Try again.');
+    } finally {
+      setAssignBusy(false);
+    }
+  }
 
   if (!ticket) return null;
   const cat = categoryMeta(ticket.category);
@@ -40,7 +71,10 @@ export default function TicketDetailModal({ ticket, onClose, onOpenPhoto }) {
       isSystem: true,
     };
     try {
-      await updateDoc(doc(db, 'tickets', ticket.id), { status: pendingStatus, resolvedAt, notes: arrayUnion(historyNote) });
+      const payload = { status: pendingStatus, resolvedAt, notes: arrayUnion(historyNote), resolvedBy: pendingStatus === 'done' ? me : null };
+      // A maintainer who starts work on an unassigned ticket takes it.
+      if (pendingStatus === 'in_progress' && !ticket.assignedTo && role === 'maintainer') payload.assignedTo = me;
+      await updateDoc(doc(db, 'tickets', ticket.id), payload);
       setDoc(doc(db, 'publicBoard', ticket.id), { status: pendingStatus, resolvedAt }, { merge: true }).catch((e) => console.error('public mirror update failed', e));
       showToast('Status updated to ' + statusMeta(pendingStatus).label);
       if (pendingStatus === 'done' && ticket.studentEmail) {
@@ -117,10 +151,35 @@ export default function TicketDetailModal({ ticket, onClose, onOpenPhoto }) {
           </div>
         )}
 
+        {(ticket.assignedTo || (ticket.status === 'done' && ticket.resolvedBy)) && (
+          <div style={{ fontSize: 12, color: 'var(--muted)', marginBottom: 8 }}>
+            {ticket.assignedTo && <>Assigned to <strong style={{ color: 'var(--text)' }}>{ticket.assignedTo.name}</strong></>}
+            {ticket.assignedTo && ticket.status === 'done' && ticket.resolvedBy ? ' \u00b7 ' : ''}
+            {ticket.status === 'done' && ticket.resolvedBy && <>Resolved by <strong style={{ color: 'var(--text)' }}>{ticket.resolvedBy.name}</strong></>}
+          </div>
+        )}
+
         <div className="dash" style={{ margin: '14px 0 4px' }}></div>
 
         {canManageTickets ? (
           <>
+            <label className="field-label">Assigned to</label>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', margin: '6px 0 12px' }}>
+              <span style={{ fontSize: 13 }}>{ticket.assignedTo ? ticket.assignedTo.name : 'Nobody yet'}</span>
+              {!(ticket.assignedTo && ticket.assignedTo.uid === currentUser.uid) && (
+                <button type="button" className="badge-btn" disabled={assignBusy} onClick={() => setAssignee(me)}>Assign to me</button>
+              )}
+              {ticket.assignedTo && <button type="button" className="badge-btn" disabled={assignBusy} onClick={() => setAssignee(null)}>Unassign</button>}
+              {isAdmin && assignees.length > 0 && (
+                <select
+                  className="input" style={{ width: 'auto', padding: '4px 8px', fontSize: 12 }} value="" disabled={assignBusy}
+                  onChange={(e) => { const u = assignees.find((x) => x.id === e.target.value); if (u) setAssignee({ uid: u.id, name: u.name || u.email }); }}
+                >
+                  <option value="">Assign to…</option>
+                  {assignees.map((u) => <option key={u.id} value={u.id}>{u.name || u.email}</option>)}
+                </select>
+              )}
+            </div>
             <label className="field-label">Update status</label>
             <div className="status-opt-grid">
               {STATUSES.map((s) => {

@@ -7,6 +7,9 @@ import { downloadWorkbook } from '../utils/export';
 import PieChart from './PieChart';
 import BarChart from './BarChart';
 import ResolutionStats from './ResolutionStats';
+import TeamStats from './TeamStats';
+import SlaStats from './SlaStats';
+import Hotspots from './Hotspots';
 
 const LOCATION_BAR_COLOR = '#5B9BD5';
 const MAX_BAR_LOCATIONS = 8;
@@ -116,6 +119,21 @@ export default function SummaryPanel({ tickets, semesterLabel, onClose }) {
         <label className="field-label">Resolution times</label>
         <div style={{ marginTop: 8, marginBottom: 16 }}>
           <ResolutionStats tickets={scoped} hideLocation={viewBlock !== ALL} openLimit={viewBlock === ALL ? 5 : 15} />
+        </div>
+
+        <label className="field-label">Service targets</label>
+        <div style={{ marginTop: 8, marginBottom: 16 }}>
+          <SlaStats tickets={scoped} />
+        </div>
+
+        <label className="field-label">Hotspots</label>
+        <div style={{ marginTop: 8, marginBottom: 16 }}>
+          <Hotspots tickets={scoped} />
+        </div>
+
+        <label className="field-label">Team workload</label>
+        <div style={{ marginTop: 8, marginBottom: 16 }}>
+          <TeamStats tickets={scoped} />
         </div>
 
         <div className="dash" style={{ margin: '4px 0 14px' }}></div>
