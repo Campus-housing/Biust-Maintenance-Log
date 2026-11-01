@@ -1,0 +1,1386 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>BIUST Maintenance & Facilities Log</title>
+<link rel="manifest" href="manifest.json">
+<link rel="icon" href="icon-192.png">
+<link rel="apple-touch-icon" href="icon-192.png">
+<meta name="theme-color" content="#0B1220">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600&family=IBM+Plex+Mono:wght@500;600&display=swap" rel="stylesheet">
+<style>
+  :root { --bg:#0B1220; --card:#131B2E; --border:#232E48; --border-soft:#2A3550; --text:#E8ECF4; --muted:#8B96AD; --dim:#5B6684; }
+  * { box-sizing: border-box; }
+  html,body { margin:0; padding:0; }
+  body { background: var(--bg); color: var(--text); font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif; -webkit-font-smoothing: antialiased; }
+  .display { font-family: 'Space Grotesk', sans-serif; }
+  .mono { font-family: 'IBM Plex Mono', monospace; }
+  .dim { color: var(--dim); }
+  .spinner { width:22px; height:22px; border-radius:50%; border:2.5px solid #2A3550; border-top-color:#5B9BD5; animation:spin 0.8s linear infinite; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .auth-card { background:var(--card); border:1px solid var(--border); border-radius:16px; padding:24px; }
+  #userBadge { margin-bottom:14px; }
+  .identity-card { background:var(--card); border:1px solid var(--border); border-radius:12px; padding:12px 14px; }
+  .identity-name { font-family:'Space Grotesk', sans-serif; font-weight:600; font-size:15px; margin-bottom:6px; }
+  .identity-meta-row { display:flex; align-items:center; gap:8px; flex-wrap:wrap; }
+  .role-pill { font-size:10px; font-weight:700; text-transform:uppercase; letter-spacing:0.3px; padding:3px 9px; border-radius:9999px; }
+  .badge-btn { background:transparent; border:1px solid var(--border-soft); color:var(--muted); border-radius:8px; padding:4px 10px; font-size:11px; cursor:pointer; font-family:inherit; }
+  .wrap { max-width: 560px; margin: 0 auto; padding: 24px 16px 100px; }
+  .header-row { display:flex; align-items:baseline; justify-content:space-between; gap:10px; margin-bottom:4px; }
+  .header-row h1 { font-size:22px; font-weight:700; margin:0; }
+  .subtitle { color: var(--muted); font-size:14px; margin: 0 0 20px; }
+  .stats-grid { display:grid; grid-template-columns:repeat(4,1fr); gap:8px; margin-bottom:20px; }
+  .stat-card { background:var(--card); border:1px solid var(--border); border-radius:10px; padding:8px 4px; text-align:center; }
+  .stat-num { font-size:18px; font-weight:600; }
+  .stat-label { color:var(--muted); font-size:9px; margin-top:2px; }
+  .search-wrap { position:relative; margin-bottom:12px; }
+  .search-icon { position:absolute; left:12px; top:50%; transform:translateY(-50%); color:var(--dim); font-size:14px; }
+  .input { background:#0F1626; border:1px solid var(--border-soft); color:var(--text); border-radius:10px; padding:10px 12px; font-size:14px; width:100%; font-family:inherit; }
+  .input::placeholder { color: var(--dim); }
+  .input:focus { outline:none; border-color:#5B9BD5; }
+  #searchInput { padding-left:36px; }
+  .chip-row { display:flex; gap:8px; overflow-x:auto; padding-bottom:4px; margin-bottom:8px; scrollbar-width:none; }
+  .chip-row::-webkit-scrollbar { display:none; }
+  .chip { border-radius:9999px; padding:6px 12px; font-size:12px; white-space:nowrap; flex-shrink:0; border:1px solid var(--border-soft); background:transparent; color:var(--muted); cursor:pointer; font-family:inherit; }
+  .chip-urgent-active { background:#E15554 !important; border-color:#E15554 !important; color:#fff !important; }
+  .error-banner { display:flex; align-items:center; gap:8px; background:rgba(225,85,84,0.1); color:#E15554; border:1px solid rgba(225,85,84,0.3); border-radius:10px; padding:8px 12px; font-size:12px; margin-bottom:12px; }
+  .loading-wrap { display:flex; justify-content:center; padding:60px 0; }
+  .empty-card { background:var(--card); border:1px solid var(--border); border-radius:14px; text-align:center; padding:56px 16px; color:var(--muted); font-size:14px; }
+  .block-group { margin-bottom:14px; }
+  .block-group-header { width:100%; display:flex; align-items:center; gap:8px; background:transparent; border:none; padding:6px 2px; cursor:pointer; font-family:inherit; color:var(--text); text-align:left; }
+  .block-group-title { font-family:'Space Grotesk', sans-serif; font-size:14px; font-weight:600; flex:1; }
+  .block-group-count { color:var(--dim); font-size:12px; background:var(--card); border:1px solid var(--border); border-radius:9999px; padding:1px 8px; }
+  .block-group-chevron { color:var(--dim); font-size:12px; width:14px; text-align:center; }
+  .block-group-body { margin-top:6px; }
+  .ticket-card { display:block; width:100%; text-align:left; background:var(--card); border:1px solid var(--border); border-left-width:3px; border-left-style:solid; border-radius:14px; padding:0; margin-bottom:12px; cursor:pointer; font-family:inherit; color:inherit; }
+  .ticket-card:active { transform: scale(0.99); }
+  .ticket-top { display:flex; align-items:center; justify-content:space-between; padding:12px 16px 4px; }
+  .ticket-top-left { display:flex; align-items:center; gap:8px; }
+  .ticket-top-right { display:flex; align-items:center; gap:8px; }
+  .punch { width:9px; height:9px; border-radius:50%; background:var(--bg); border:2px solid #3A4568; display:inline-block; }
+  .ticket-code { color:var(--dim); font-size:11px; font-weight:600; }
+  .urgent-tag { color:#E15554; font-size:10px; font-weight:600; display:flex; align-items:center; gap:2px; }
+  .thumb { width:26px; height:26px; border-radius:6px; overflow:hidden; display:inline-block; border:1px solid var(--border-soft); }
+  .thumb img { width:100%; height:100%; object-fit:cover; display:block; }
+  .cat-icon { font-size:15px; }
+  .ticket-title { padding: 0 16px 4px; font-size:14px; font-weight:600; }
+  .dash { border-top:1px dashed var(--border-soft); margin:0 16px; }
+  .ticket-body { padding:12px 16px; }
+  .ticket-desc { font-size:14px; line-height:1.4; margin:0; }
+  .ticket-meta { display:flex; align-items:center; justify-content:space-between; margin-top:10px; font-size:11px; }
+  .status-pill { font-weight:600; border-radius:5px; padding:2px 8px; font-size:10px; }
+  .fab { position:fixed; bottom:24px; right:24px; width:52px; height:52px; border-radius:50%; background:#F2A93C; color:#0B1220; border:none; font-size:26px; font-weight:400; cursor:pointer; box-shadow:0 6px 16px rgba(0,0,0,0.4); line-height:1; }
+  .fab:active { transform: scale(0.95); }
+  .modal-overlay { position:fixed; inset:0; background:rgba(0,0,0,0.6); z-index:50; display:flex; align-items:flex-end; justify-content:center; }
+  .modal-card { background:var(--card); border:1px solid var(--border); width:100%; max-width:480px; border-radius:20px 20px 0 0; padding:20px; max-height:90vh; overflow-y:auto; }
+  @media (min-width: 640px) { .modal-overlay { align-items:center; } .modal-card { border-radius:20px; } }
+  .modal-header { display:flex; align-items:center; justify-content:space-between; margin-bottom:16px; }
+  .modal-header h2 { font-size:18px; margin:0; font-weight:600; }
+  .icon-btn { background:none; border:none; color:var(--muted); font-size:16px; cursor:pointer; padding:4px; }
+  .field-label { color:var(--muted); font-size:11px; display:block; margin-bottom:4px; }
+  .form-grid-2 { display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-bottom:12px; }
+  textarea.input { resize:none; }
+  .cat-grid { display:grid; grid-template-columns:repeat(4,1fr); gap:8px; margin-top:4px; margin-bottom:12px; }
+  .cat-btn { border:1px solid var(--border-soft); background:transparent; border-radius:10px; padding:8px 4px; display:flex; flex-direction:column; align-items:center; gap:4px; cursor:pointer; font-family:inherit; }
+  .cat-btn span:first-child { font-size:16px; }
+  .cat-btn-label { color:var(--muted); font-size:9px; }
+  .cat-btn-active { border-color:#F2A93C; background:rgba(242,169,60,0.15); }
+  .cat-btn-active .cat-btn-label { color:#F2A93C; }
+  textarea#formDesc { margin-bottom:12px; }
+  .form-row-flex { display:flex; align-items:center; gap:12px; margin-bottom:12px; flex-wrap:wrap; }
+  .photo-add-btn { display:flex; align-items:center; gap:8px; border:1px solid var(--border-soft); color:var(--muted); background:transparent; border-radius:10px; padding:8px 12px; font-size:12px; cursor:pointer; font-family:inherit; }
+  .photo-preview { position:relative; width:56px; height:56px; }
+  .photo-preview img { width:56px; height:56px; object-fit:cover; border-radius:8px; display:block; }
+  .photo-remove { position:absolute; top:-6px; right:-6px; background:#E15554; border-radius:50%; width:18px; height:18px; border:none; color:#fff; font-size:12px; line-height:18px; padding:0; cursor:pointer; }
+  .urgent-btn { display:flex; align-items:center; gap:6px; border:1px solid var(--border-soft); color:var(--muted); background:transparent; border-radius:10px; padding:8px 12px; font-size:12px; cursor:pointer; font-family:inherit; }
+  .urgent-btn-active { border-color:#E15554; background:#E15554; color:#fff; }
+  .form-error { color:#E15554; font-size:12px; margin:0 0 8px; }
+  .submit-btn { width:100%; border:none; border-radius:10px; padding:12px; font-size:14px; font-weight:600; background:#F2A93C; color:#0B1220; cursor:pointer; font-family:inherit; }
+  .submit-btn:disabled { opacity:0.7; }
+  .photo-overlay { position:fixed; inset:0; background:rgba(0,0,0,0.85); z-index:60; display:none; align-items:center; justify-content:center; padding:20px; }
+  .photo-overlay img { max-width:100%; max-height:100%; border-radius:12px; }
+  .status-opt-grid { display:grid; grid-template-columns:1fr 1fr; gap:8px; margin:10px 0 4px; }
+  .status-opt-btn { border:1px solid var(--border-soft); background:transparent; color:var(--muted); border-radius:10px; padding:10px 8px; font-size:12px; font-weight:600; cursor:pointer; font-family:inherit; }
+  .confirm-bar { display:flex; align-items:center; justify-content:space-between; gap:8px; background:#0F1626; border:1px solid var(--border-soft); border-radius:10px; padding:10px 12px; margin-top:6px; font-size:13px; }
+  .confirm-actions { display:flex; gap:8px; flex-shrink:0; }
+  .confirm-cancel { background:transparent; border:1px solid var(--border-soft); color:var(--muted); border-radius:8px; padding:6px 12px; font-size:12px; cursor:pointer; font-family:inherit; }
+  .confirm-ok { background:#F2A93C; border:none; color:#0B1220; border-radius:8px; padding:6px 12px; font-size:12px; font-weight:600; cursor:pointer; font-family:inherit; }
+  .confirm-ok:disabled { opacity:0.7; }
+  .user-row-wrap { border-bottom:1px solid var(--border); }
+  .user-row { display:flex; justify-content:space-between; align-items:center; width:100%; padding:8px 0; font-size:13px; background:none; border:none; font-family:inherit; color:inherit; text-align:left; }
+  .user-editor { padding:0 0 12px; }
+  .block-check-grid { display:grid; grid-template-columns:1fr 1fr; gap:6px; margin:6px 0; }
+  .block-check { display:flex; align-items:center; gap:6px; font-size:12px; color:var(--muted); }
+  .delete-btn { width:100%; border:1px solid #E15554; background:transparent; color:#E15554; border-radius:10px; padding:10px; font-size:13px; font-weight:600; cursor:pointer; font-family:inherit; }
+  .note-row { padding:8px 0; border-bottom:1px solid var(--border); }
+  .note-row:last-child { border-bottom:none; }
+  .note-meta { font-size:11px; margin-bottom:2px; }
+  .note-text { font-size:13px; margin:0; line-height:1.4; }
+  .summary-table { width:100%; border-collapse:collapse; font-size:11px; margin-top:6px; }
+  .summary-table th, .summary-table td { padding:6px 4px; text-align:center; border-bottom:1px solid var(--border); }
+  .summary-table th { color:var(--muted); font-weight:600; font-size:10px; }
+  .summary-table td:first-child, .summary-table th:first-child { text-align:left; }
+</style>
+</head>
+<body>
+
+<div id="initialLoading" style="min-height:100vh; display:flex; align-items:center; justify-content:center;">
+  <div class="spinner"></div>
+</div>
+
+<div id="authScreen" style="display:none; min-height:100vh; align-items:center; justify-content:center; padding:24px;">
+  <div id="authCard" style="width:100%; max-width:360px;"></div>
+</div>
+
+<div id="appRoot" style="display:none;">
+<div class="wrap">
+  <div class="header-row">
+    <h1 class="display">BIUST M&amp;F Log</h1>
+    <span class="mono dim" id="totalCount">0 total</span>
+  </div>
+  <div id="userBadge"></div>
+  <p class="subtitle" id="subtitleText">Report and track campus maintenance issues</p>
+
+  <div class="stats-grid" id="statsGrid"></div>
+
+  <div class="search-wrap" id="searchWrap">
+    <span class="search-icon">🔍</span>
+    <input id="searchInput" class="input" placeholder="Search room, location, description...">
+  </div>
+
+  <div class="chip-row" id="statusChips"></div>
+  <div class="chip-row" id="categoryChips"></div>
+
+  <div id="errorBanner" class="error-banner" style="display:none;"></div>
+
+  <div id="listArea"></div>
+</div>
+
+<button id="fabBtn" class="fab" aria-label="Report an issue">+</button>
+
+<div id="modalOverlay" class="modal-overlay" style="display:none;">
+  <div id="modalCard" class="modal-card"></div>
+</div>
+
+<div id="detailOverlay" class="modal-overlay" style="display:none;">
+  <div id="detailCard" class="modal-card"></div>
+</div>
+
+<div id="adminOverlay" class="modal-overlay" style="display:none;">
+  <div id="adminCard" class="modal-card"></div>
+</div>
+
+<div id="summaryOverlay" class="modal-overlay" style="display:none;">
+  <div id="summaryCard" class="modal-card"></div>
+</div>
+
+<div id="photoOverlay" class="photo-overlay">
+  <img id="photoOverlayImg" src="" alt="issue full size">
+</div>
+</div>
+
+<script src="firebase-config.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+<script type="module">
+import { initializeApp } from 'https://www.gstatic.com/firebasejs/12.11.0/firebase-app.js';
+import {
+  getFirestore, collection, doc, addDoc, setDoc, getDoc, getDocs, updateDoc, deleteDoc,
+  onSnapshot, query, where, arrayUnion
+} from 'https://www.gstatic.com/firebasejs/12.11.0/firebase-firestore.js';
+import {
+  getAuth, onAuthStateChanged, signInWithEmailAndPassword, createUserWithEmailAndPassword,
+  signOut, sendPasswordResetEmail, updateProfile
+} from 'https://www.gstatic.com/firebasejs/12.11.0/firebase-auth.js';
+
+// Your Firebase config lives in firebase-config.js, next to this file —
+// nothing to find or edit in here.
+const firebaseConfig = window.FIREBASE_CONFIG || {};
+if (!firebaseConfig.apiKey || firebaseConfig.apiKey === 'YOUR_API_KEY') {
+  document.body.innerHTML =
+    '<div style="max-width:420px;margin:80px auto;padding:24px;text-align:center;' +
+    'font-family:sans-serif;color:#E8ECF4;background:#131B2E;border-radius:16px;border:1px solid #232E48;">' +
+    '<h2 style="margin-top:0;">Almost there</h2>' +
+    '<p style="color:#8B96AD;font-size:14px;">Open <code>firebase-config.js</code> (same folder as this file), ' +
+    'paste in your Firebase project config, and reload this page.</p></div>';
+  throw new Error('Firebase config not set — see firebase-config.js');
+}
+
+const app = initializeApp(firebaseConfig);
+const db = getFirestore(app);
+const auth = getAuth(app);
+const ticketsCol = collection(db, 'tickets');
+const usersCol = collection(db, 'users');
+const publicBoardCol = collection(db, 'publicBoard');
+
+// A second, isolated Firebase app instance — used ONLY so an admin can create
+// a maintainer/supervisor's login without being signed out of their own session.
+const secondaryApp = initializeApp(firebaseConfig, 'Secondary');
+const secondaryAuth = getAuth(secondaryApp);
+
+const BLOCK_GROUPS = [
+  { label: 'BPC', options: ['BPC'] },
+  { label: 'Numbered Blocks', options: ['1','2','3','4','5','6'] },
+  { label: 'Lettered Blocks', options: ['A','B','C','D','E','F'] },
+  { label: 'Sekgoma', options: ['Sekgoma 1','Sekgoma 2','Sekgoma 3','Sekgoma 4'] },
+  { label: 'Fengyue', options: ['Fengyue 1','Fengyue 2','Fengyue 3','Fengyue 4'] },
+  { label: 'Main Halls', options: ['Old Main Boys','Old Main Girls','New Main Boys','New Main Girls'] },
+  { label: 'Campus Facilities', options: ['Student Center','Admin','Engineering Block','Science Block','Primary','Refectory'] },
+];
+const BLOCKS = BLOCK_GROUPS.flatMap(g => g.options);
+const RESIDENTIAL_BLOCKS = BLOCK_GROUPS.filter(g => g.label !== 'Campus Facilities').flatMap(g => g.options);
+const FACILITIES_GROUP = BLOCK_GROUPS.find(g => g.label === 'Campus Facilities');
+
+const CATEGORIES = [
+  { id: 'electricity', label: 'Electricity', icon: '⚡' },
+  { id: 'plumbing', label: 'Plumbing', icon: '💧' },
+  { id: 'furniture', label: 'Furniture', icon: '🛋️' },
+  { id: 'access', label: 'Access/Other', icon: '🔑' },
+];
+const SPECIALTIES = [
+  { id: 'all', label: 'All categories' },
+  { id: 'electricity', label: 'Electricity' },
+  { id: 'plumbing', label: 'Plumbing' },
+  { id: 'furniture', label: 'Furniture' },
+  { id: 'access', label: 'Access/Other' },
+];
+
+const STATUSES = [
+  { id: 'pending', label: 'Pending', color: '#F2A93C' },
+  { id: 'in_progress', label: 'In progress', color: '#5B9BD5' },
+  { id: 'no_access', label: 'No access', color: '#E15554' },
+  { id: 'done', label: 'Done', color: '#4FB477' },
+];
+const ARCHIVE_MS = 7 * 24 * 60 * 60 * 1000;
+
+let tickets = [];
+let loading = true;
+let errorMsg = null;
+let filterStatus = 'all';
+let filterCategory = 'all';
+let filterUrgent = false;
+let searchQuery = '';
+let formOpen = false;
+let formError = '';
+let saving = false;
+let formCategory = 'electricity';
+let formPhoto = null;
+let formUrgent = false;
+let collapsedBlocks = new Set();
+let detailTicketId = null;
+let pendingStatus = null;
+let pendingDelete = false;
+
+let currentUser = null;
+let currentRole = null;
+let currentName = '';
+let currentSpecialty = 'all';
+let currentAssignedBlocks = [];
+let authMode = 'login';
+let authError = '';
+let authBusy = false;
+let unsubscribeTickets = null;
+let adminError = '';
+let adminBusy = false;
+let publicMode = false;
+let editingUserId = null;
+let editDraft = null;
+let lastLoadedUsers = [];
+let newStaffRole = 'maintainer';
+let newStaffSpecialty = 'all';
+let lastStaffCreated = null;
+
+function isAdminRole() { return currentRole === 'admin'; }
+function isMaintainerRole() { return currentRole === 'maintainer'; }
+function isSupervisorRole() { return currentRole === 'supervisor'; }
+function canManageTickets() { return isAdminRole() || isMaintainerRole(); }
+function canSeeOversight() { return isAdminRole() || isSupervisorRole(); }
+function isBoardView() { return isAdminRole() || isMaintainerRole() || isSupervisorRole() || publicMode; }
+function isResidentialBlock(b) { return RESIDENTIAL_BLOCKS.includes(b); }
+
+function escapeHtml(str) {
+  return String(str == null ? '' : str).replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
+}
+function categoryMeta(id) { return CATEGORIES.find(c => c.id === id) || CATEGORIES[3]; }
+function statusMeta(id) { return STATUSES.find(s => s.id === id) || STATUSES[0]; }
+function specialtyLabel(id) { const s = SPECIALTIES.find(x => x.id === id); return s ? s.label : 'All categories'; }
+function isArchived(t) { return t.status === 'done' && t.resolvedAt && (Date.now() - new Date(t.resolvedAt).getTime()) > ARCHIVE_MS; }
+function formatDate(iso) {
+  const d = new Date(iso);
+  return d.toLocaleDateString('en-GB', { day: '2-digit', month: 'short' }) + ' · ' + d.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' });
+}
+function friendlyAuthError(e) {
+  const code = e && e.code ? e.code : '';
+  if (code === 'auth/invalid-credential' || code === 'auth/wrong-password' || code === 'auth/user-not-found') return 'Incorrect email or password.';
+  if (code === 'auth/email-already-in-use') return 'An account with this email already exists — try logging in instead.';
+  if (code === 'auth/weak-password') return 'Password should be at least 6 characters.';
+  if (code === 'auth/invalid-email') return 'That email address looks invalid.';
+  if (code === 'auth/too-many-requests') return 'Too many attempts — wait a moment and try again.';
+  if (code === 'auth/configuration-not-found') return 'That sign-in method isn\u2019t turned on yet in Firebase — check Authentication > Sign-in method.';
+  return (e && e.message) ? e.message : 'Something went wrong. Try again.';
+}
+
+// ---------- Auth ----------
+onAuthStateChanged(auth, async (user) => {
+  document.getElementById('initialLoading').style.display = 'none';
+  currentUser = user;
+  publicMode = false;
+  if (unsubscribeTickets) { unsubscribeTickets(); unsubscribeTickets = null; }
+  if (!user) {
+    currentRole = null;
+    showAuthScreen();
+    return;
+  }
+  try {
+    const userRef = doc(db, 'users', user.uid);
+    let snap = await getDoc(userRef);
+    if (!snap.exists()) {
+      await setDoc(userRef, {
+        email: user.email,
+        name: user.displayName || (user.email ? user.email.split('@')[0] : 'User'),
+        role: 'reporter',
+        assignedBlocks: [],
+        createdAt: new Date().toISOString(),
+      });
+      snap = await getDoc(userRef);
+    }
+    const data = snap.data();
+    currentRole = data.role || 'reporter';
+    currentName = data.name || '';
+    currentSpecialty = data.specialty || 'all';
+    currentAssignedBlocks = Array.isArray(data.assignedBlocks) ? data.assignedBlocks : [];
+  } catch (e) {
+    console.error(e);
+    authError = 'Could not load your account. Try reloading the page.';
+  }
+  showApp();
+  subscribeTickets();
+});
+
+function showAuthScreen() {
+  document.getElementById('authScreen').style.display = 'flex';
+  document.getElementById('appRoot').style.display = 'none';
+  renderAuthScreen();
+}
+function showApp() {
+  document.getElementById('authScreen').style.display = 'none';
+  document.getElementById('appRoot').style.display = 'block';
+  document.getElementById('fabBtn').style.display = currentUser ? '' : 'none';
+  renderUserBadge();
+}
+function enterPublicMode() {
+  publicMode = true;
+  document.getElementById('authScreen').style.display = 'none';
+  document.getElementById('appRoot').style.display = 'block';
+  document.getElementById('fabBtn').style.display = 'none';
+  renderUserBadge();
+  subscribeTickets();
+}
+function exitPublicMode() {
+  publicMode = false;
+  if (unsubscribeTickets) { unsubscribeTickets(); unsubscribeTickets = null; }
+  tickets = [];
+  showAuthScreen();
+}
+
+function renderAuthScreen() {
+  const card = document.getElementById('authCard');
+  const isSignup = authMode === 'signup';
+  card.innerHTML =
+    '<div style="text-align:center;margin-bottom:24px;"><h1 class="display" style="font-size:23px;margin:0 0 4px;">BIUST Maintenance &amp; Facilities Log</h1>' +
+    '<p class="dim" style="font-size:13px;margin:0;">' + (isSignup ? 'Create an account to report issues' : 'Log in to continue') + '</p></div>' +
+    '<div class="auth-card">' +
+      (isSignup ? '<input id="authName" class="input" placeholder="Full name" style="margin-bottom:10px;">' : '') +
+      '<input id="authEmail" class="input" placeholder="Email" type="email" style="margin-bottom:10px;">' +
+      '<input id="authPassword" class="input" placeholder="Password" type="password" style="margin-bottom:10px;">' +
+      '<div id="authErrorArea"></div>' +
+      '<button type="button" id="authSubmitBtn" class="submit-btn" style="margin-bottom:10px;">' + (isSignup ? 'Sign up' : 'Log in') + '</button>' +
+      (!isSignup ? '<button type="button" id="forgotBtn" style="background:none;border:none;color:#5B9BD5;font-size:12px;cursor:pointer;font-family:inherit;display:block;margin:0 auto;">Forgot password?</button>' : '') +
+      '<p style="text-align:center;font-size:12px;color:var(--muted);margin:14px 0 0;">' +
+        (isSignup ? 'Already have an account? ' : 'New here? ') +
+        '<button type="button" id="authToggleBtn" style="background:none;border:none;color:#5B9BD5;font-size:12px;cursor:pointer;font-family:inherit;padding:0;">' + (isSignup ? 'Log in' : 'Sign up') + '</button>' +
+      '</p>' +
+    '</div>' +
+    '<p style="text-align:center;font-size:12px;margin:14px 0 0;"><button type="button" id="publicBoardBtn" style="background:none;border:none;color:var(--muted);font-size:12px;cursor:pointer;font-family:inherit;padding:0;text-decoration:underline;">View status board without logging in</button></p>';
+
+  document.getElementById('authSubmitBtn').addEventListener('click', handleAuthSubmit);
+  document.getElementById('publicBoardBtn').addEventListener('click', enterPublicMode);
+  document.getElementById('authToggleBtn').addEventListener('click', () => {
+    authMode = isSignup ? 'login' : 'signup'; authError = ''; renderAuthScreen();
+  });
+  if (!isSignup) document.getElementById('forgotBtn').addEventListener('click', handleForgotPassword);
+  updateAuthError();
+}
+function updateAuthError() {
+  const area = document.getElementById('authErrorArea');
+  if (area) area.innerHTML = authError ? '<p class="form-error">' + escapeHtml(authError) + '</p>' : '';
+  const btn = document.getElementById('authSubmitBtn');
+  if (btn) { btn.disabled = authBusy; btn.textContent = authBusy ? 'Please wait...' : (authMode === 'signup' ? 'Sign up' : 'Log in'); }
+}
+async function handleAuthSubmit() {
+  const email = document.getElementById('authEmail').value.trim();
+  const password = document.getElementById('authPassword').value;
+  const isSignup = authMode === 'signup';
+  const name = isSignup ? document.getElementById('authName').value.trim() : '';
+  if (!email || !password || (isSignup && !name)) {
+    authError = 'Please fill in all fields.';
+    updateAuthError();
+    return;
+  }
+  authError = ''; authBusy = true; updateAuthError();
+  try {
+    if (isSignup) {
+      const cred = await createUserWithEmailAndPassword(auth, email, password);
+      await updateProfile(cred.user, { displayName: name });
+    } else {
+      await signInWithEmailAndPassword(auth, email, password);
+    }
+  } catch (e) {
+    console.error(e);
+    authError = friendlyAuthError(e);
+    authBusy = false;
+    updateAuthError();
+  }
+}
+async function handleForgotPassword() {
+  const email = document.getElementById('authEmail').value.trim();
+  if (!email) { authError = 'Enter your email above first, then tap Forgot password.'; updateAuthError(); return; }
+  try {
+    await sendPasswordResetEmail(auth, email);
+    const area = document.getElementById('authErrorArea');
+    if (area) area.innerHTML = '<p style="color:#4FB477;font-size:12px;">Password reset email sent — check your inbox.</p>';
+  } catch (e) {
+    console.error(e);
+    authError = friendlyAuthError(e);
+    updateAuthError();
+  }
+}
+
+function renderUserBadge() {
+  const el = document.getElementById('userBadge');
+  if (!el) return;
+  if (publicMode) {
+    el.innerHTML =
+      '<div class="identity-card"><div class="identity-name">Public status board</div>' +
+      '<div class="identity-meta-row"><span class="dim" style="font-size:12px;">Read-only \u2014 no account</span>' +
+      '<span style="margin-left:auto;"><button type="button" id="loginFromPublicBtn" class="badge-btn">Log in to report</button></span></div></div>';
+    document.getElementById('loginFromPublicBtn').addEventListener('click', exitPublicMode);
+    return;
+  }
+  if (!currentUser) return;
+  const roleMeta = {
+    admin: { label: 'Admin', color: '#F2A93C' },
+    maintainer: { label: 'Maintainer', color: '#5B9BD5' },
+    supervisor: { label: 'Supervisor', color: '#4FB477' },
+    reporter: { label: 'RA', color: '#8B96AD' },
+  };
+  const rm = roleMeta[currentRole] || { label: currentRole, color: '#8B96AD' };
+  let extra = '';
+  if (isMaintainerRole()) extra = specialtyLabel(currentSpecialty);
+  else if (currentRole === 'reporter' && currentAssignedBlocks.length) extra = 'RA: ' + currentAssignedBlocks.join(', ');
+
+  el.innerHTML =
+    '<div class="identity-card">' +
+      '<div class="identity-name">' + escapeHtml(currentName || currentUser.email) + '</div>' +
+      '<div class="identity-meta-row">' +
+        '<span class="role-pill" style="background:' + rm.color + '22;color:' + rm.color + ';border:1px solid ' + rm.color + '55;">' + escapeHtml(rm.label) + '</span>' +
+        (extra ? '<span class="dim" style="font-size:11px;">' + escapeHtml(extra) + '</span>' : '') +
+        '<span style="margin-left:auto;display:flex;gap:8px;flex-wrap:wrap;">' +
+          (isAdminRole() ? '<button type="button" id="manageBtn" class="badge-btn">Manage</button>' : '') +
+          (canSeeOversight() ? '<button type="button" id="summaryBtn" class="badge-btn">Summary</button>' : '') +
+          '<button type="button" id="exportMineBtn" class="badge-btn">Export</button>' +
+          '<button type="button" id="logoutBtn" class="badge-btn">Log out</button>' +
+        '</span>' +
+      '</div>' +
+    '</div>';
+  document.getElementById('logoutBtn').addEventListener('click', () => signOut(auth));
+  document.getElementById('exportMineBtn').addEventListener('click', () => downloadWorkbook(tickets, currentRole || 'export'));
+  if (isAdminRole()) document.getElementById('manageBtn').addEventListener('click', openAdmin);
+  if (canSeeOversight()) document.getElementById('summaryBtn').addEventListener('click', openSummary);
+}
+
+// ---------- Tickets ----------
+function subscribeTickets() {
+  loading = true; render();
+  let q;
+  if (publicMode) {
+    q = publicBoardCol;
+  } else if (canSeeOversight()) {
+    q = ticketsCol;
+  } else if (isMaintainerRole()) {
+    q = (currentSpecialty && currentSpecialty !== 'all')
+      ? query(ticketsCol, where('category', '==', currentSpecialty))
+      : ticketsCol;
+  } else {
+    q = query(ticketsCol, where('reportedByUid', '==', currentUser.uid));
+  }
+
+  unsubscribeTickets = onSnapshot(q, (snapshot) => {
+    tickets = snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
+    loading = false; errorMsg = null;
+    render();
+    if (detailTicketId) buildDetail();
+  }, (err) => {
+    console.error(err);
+    errorMsg = 'Could not load the log. Check your connection.';
+    loading = false;
+    render();
+  });
+}
+
+function publicMirror(ticket) {
+  return {
+    code: ticket.code, block: ticket.block, room: ticket.room, category: ticket.category,
+    description: ticket.description, status: ticket.status, urgent: !!ticket.urgent,
+    reportedAt: ticket.reportedAt, resolvedAt: ticket.resolvedAt || null,
+  };
+}
+
+function handlePhotoFile(file) {
+  const objectUrl = URL.createObjectURL(file);
+  const img = new Image();
+  img.onload = () => {
+    try {
+      const maxDim = 700;
+      let { width, height } = img;
+      if (width > height && width > maxDim) { height = Math.round(height * maxDim / width); width = maxDim; }
+      else if (height >= width && height > maxDim) { width = Math.round(width * maxDim / height); height = maxDim; }
+      const canvas = document.createElement('canvas');
+      canvas.width = width; canvas.height = height;
+      canvas.getContext('2d').drawImage(img, 0, 0, width, height);
+      formPhoto = canvas.toDataURL('image/jpeg', 0.5);
+      updatePhotoArea();
+    } catch (e) {
+      console.error(e);
+      formError = 'Could not process that photo — try a different one.';
+      updateFormError();
+    } finally {
+      URL.revokeObjectURL(objectUrl);
+    }
+  };
+  img.onerror = () => {
+    URL.revokeObjectURL(objectUrl);
+    formError = 'Could not read that photo — try a different one.';
+    updateFormError();
+  };
+  img.src = objectUrl;
+}
+
+function visibleBlockGroups() {
+  if (canManageTickets() || canSeeOversight()) return BLOCK_GROUPS;
+  const groups = [];
+  if (currentAssignedBlocks.length) groups.push({ label: 'Your Block(s)', options: currentAssignedBlocks });
+  if (FACILITIES_GROUP) groups.push(FACILITIES_GROUP);
+  return groups;
+}
+
+async function submitTicket() {
+  const blockSelect = document.getElementById('formBlock');
+  const block = blockSelect ? blockSelect.value : '';
+  const room = document.getElementById('formRoom').value.trim();
+  const description = document.getElementById('formDesc').value.trim();
+  const reportedBy = document.getElementById('formReportedBy').value.trim();
+  const contact = document.getElementById('formContact').value.trim();
+  if (!block || !room || !description) {
+    formError = 'Please add a location, room number, and a description.';
+    updateFormError();
+    return;
+  }
+  formError = '';
+  saving = true;
+  updateFormError();
+  const code = (block.replace(/\s+/g,'').slice(0,3).toUpperCase()) + '-' + room + '-' + Date.now().toString(36).toUpperCase().slice(-4);
+  const ticket = {
+    code, block, room, category: formCategory, description, reportedBy, contact,
+    urgent: !!formUrgent, photo: formPhoto || null,
+    status: 'pending', reportedAt: new Date().toISOString(), resolvedAt: null,
+    reportedByUid: currentUser.uid, notes: [],
+  };
+  try {
+    const ref = await addDoc(ticketsCol, ticket);
+    setDoc(doc(db, 'publicBoard', ref.id), publicMirror(ticket)).catch(e => console.error('public mirror write failed', e));
+    closeForm();
+  } catch (e) {
+    console.error(e);
+    formError = 'Could not save that. If it was for a residential block, check you\'re the RA for it — otherwise check your connection and try again.';
+    saving = false;
+    updateFormError();
+  }
+}
+
+function openForm() {
+  formOpen = true; formError = ''; saving = false; formCategory = 'electricity'; formPhoto = null; formUrgent = false;
+  document.getElementById('modalOverlay').style.display = 'flex';
+  buildModal();
+}
+function closeForm() {
+  formOpen = false;
+  document.getElementById('modalOverlay').style.display = 'none';
+}
+
+function buildModal() {
+  const modalCard = document.getElementById('modalCard');
+  const groups = visibleBlockGroups();
+  modalCard.innerHTML =
+    '<div class="modal-header"><h2 class="display">Report an issue</h2><button type="button" id="closeFormBtn" class="icon-btn">✕</button></div>' +
+    (groups.length === 0
+      ? '<p class="form-error">You\'re not set up as an RA for any block yet, so there\'s nowhere for you to report a residential issue. Ask your admin to assign you, or report a campus facility issue instead once one is available.</p>'
+      : ('<div class="form-grid-2">' +
+          '<div><label class="field-label">Location</label><select id="formBlock" class="input">' +
+            groups.map(g => '<optgroup label="' + escapeHtml(g.label) + '">' + g.options.map(b => '<option value="' + escapeHtml(b) + '">' + escapeHtml(b) + '</option>').join('') + '</optgroup>').join('') +
+          '</select></div>' +
+          '<div><label class="field-label">Room</label><input id="formRoom" class="input" placeholder="e.g. 17"></div>' +
+        '</div>' +
+        '<div><label class="field-label">Category</label><div class="cat-grid" id="catGrid">' +
+          CATEGORIES.map(c => '<button type="button" class="cat-btn' + (formCategory === c.id ? ' cat-btn-active' : '') + '" data-cat="' + c.id + '"><span>' + c.icon + '</span><span class="cat-btn-label">' + escapeHtml(c.label.split('/')[0]) + '</span></button>').join('') +
+        '</div></div>' +
+        '<div><label class="field-label">What\'s wrong?</label><textarea id="formDesc" class="input" rows="2" placeholder="e.g. sockets not working"></textarea></div>' +
+        '<div class="form-grid-2">' +
+          '<div><label class="field-label">Reported by</label><input id="formReportedBy" class="input" placeholder="Name" value="' + escapeHtml(currentName || '') + '"></div>' +
+          '<div><label class="field-label">Access contact</label><input id="formContact" class="input" placeholder="Phone (optional)"></div>' +
+        '</div>' +
+        '<div class="form-row-flex">' +
+          '<input type="file" id="photoInput" accept="image/*" capture="environment" style="display:none">' +
+          '<div id="photoArea"></div>' +
+          '<button type="button" id="urgentToggleBtn" class="urgent-btn">🚩 Urgent</button>' +
+        '</div>' +
+        '<div id="formErrorArea"></div>' +
+        '<button type="button" id="submitBtn" class="submit-btn">Submit ticket</button>')
+    );
+
+  document.getElementById('closeFormBtn').addEventListener('click', closeForm);
+  if (groups.length === 0) return;
+  document.getElementById('catGrid').addEventListener('click', (e) => {
+    const btn = e.target.closest('.cat-btn');
+    if (!btn) return;
+    formCategory = btn.dataset.cat;
+    updateCategoryButtons();
+  });
+  document.getElementById('photoInput').addEventListener('change', (e) => {
+    const file = e.target.files && e.target.files[0];
+    if (file) handlePhotoFile(file);
+    e.target.value = '';
+  });
+  document.getElementById('urgentToggleBtn').addEventListener('click', () => {
+    formUrgent = !formUrgent;
+    updateUrgentButton();
+  });
+  document.getElementById('submitBtn').addEventListener('click', submitTicket);
+
+  updateCategoryButtons();
+  updatePhotoArea();
+  updateUrgentButton();
+  updateFormError();
+}
+
+function updateCategoryButtons() {
+  document.querySelectorAll('#catGrid .cat-btn').forEach(btn => {
+    btn.classList.toggle('cat-btn-active', btn.dataset.cat === formCategory);
+  });
+}
+function updatePhotoArea() {
+  const area = document.getElementById('photoArea');
+  if (!area) return;
+  if (formPhoto) {
+    area.innerHTML = '<div class="photo-preview"><img src="' + formPhoto + '" alt="attached"><button type="button" id="removePhotoBtn" class="photo-remove">&times;</button></div>';
+    document.getElementById('removePhotoBtn').addEventListener('click', () => { formPhoto = null; updatePhotoArea(); });
+  } else {
+    area.innerHTML = '<button type="button" id="addPhotoBtn" class="photo-add-btn">📷 Add photo (optional)</button>';
+    document.getElementById('addPhotoBtn').addEventListener('click', () => { document.getElementById('photoInput').click(); });
+  }
+}
+function updateUrgentButton() {
+  const btn = document.getElementById('urgentToggleBtn');
+  if (btn) btn.classList.toggle('urgent-btn-active', formUrgent);
+}
+function updateFormError() {
+  const area = document.getElementById('formErrorArea');
+  if (area) area.innerHTML = formError ? '<p class="form-error">' + escapeHtml(formError) + '</p>' : '';
+  const btn = document.getElementById('submitBtn');
+  if (btn) { btn.disabled = saving; btn.textContent = saving ? 'Saving...' : 'Submit ticket'; }
+}
+
+// ---------- Main render ----------
+function render() {
+  const board = isBoardView();
+  document.getElementById('totalCount').textContent = tickets.length + (board ? ' total' : (tickets.length === 1 ? ' report' : ' reports'));
+  document.getElementById('statsGrid').style.display = board ? 'grid' : 'none';
+  document.getElementById('searchWrap').style.display = board ? 'block' : 'none';
+  document.getElementById('statusChips').style.display = board ? 'flex' : 'none';
+  document.getElementById('categoryChips').style.display = board ? 'flex' : 'none';
+  document.getElementById('subtitleText').textContent = board ? 'Report and track campus maintenance issues' : "Track the issues you've reported";
+  if (board) { renderStats(); renderChips(); }
+  renderError();
+  renderList();
+}
+
+function renderStats() {
+  const counts = { pending:0, in_progress:0, no_access:0, done:0 };
+  tickets.forEach(t => { if (!isArchived(t)) counts[t.status] = (counts[t.status]||0)+1; });
+  document.getElementById('statsGrid').innerHTML = STATUSES.map(s =>
+    '<div class="stat-card"><div class="mono stat-num" style="color:' + s.color + '">' + (counts[s.id]||0) + '</div><div class="stat-label">' + s.label + '</div></div>'
+  ).join('');
+}
+
+function chip(group, value, active, label, color) {
+  const bg = active ? (color || '#E8ECF4') : 'transparent';
+  const bd = active ? (color || '#E8ECF4') : '#2A3550';
+  const fg = active ? '#0B1220' : '#8B96AD';
+  return '<button type="button" class="chip" data-filter-' + group + '="' + value + '" style="background:' + bg + ';border-color:' + bd + ';color:' + fg + '">' + label + '</button>';
+}
+
+function renderChips() {
+  const archivedCount = tickets.filter(isArchived).length;
+  const urgentCount = tickets.filter(t => t.urgent && t.status !== 'done' && !isArchived(t)).length;
+
+  document.getElementById('statusChips').innerHTML =
+    chip('status', 'all', filterStatus === 'all', 'All status') +
+    STATUSES.map(s => chip('status', s.id, filterStatus === s.id, s.label, s.color)).join('') +
+    chip('status', 'archived', filterStatus === 'archived', 'Archived (' + archivedCount + ')', '#8B96AD');
+
+  document.getElementById('categoryChips').innerHTML =
+    chip('category', 'all', filterCategory === 'all', 'All types') +
+    CATEGORIES.map(c => chip('category', c.id, filterCategory === c.id, c.icon + ' ' + c.label)).join('') +
+    '<button type="button" class="chip' + (filterUrgent ? ' chip-urgent-active' : '') + '" data-filter-urgent="1">🚩 Urgent (' + urgentCount + ')</button>';
+}
+
+function renderError() {
+  const el = document.getElementById('errorBanner');
+  if (errorMsg) { el.style.display = 'flex'; el.textContent = errorMsg; }
+  else { el.style.display = 'none'; }
+}
+
+function ticketCardHtml(t) {
+  const cat = categoryMeta(t.category);
+  const st = statusMeta(t.status);
+  const urgentActive = t.urgent && t.status !== 'done';
+  const borderColor = urgentActive ? '#E15554' : st.color;
+  return '<button type="button" class="ticket-card" data-detail-id="' + t.id + '" style="border-left-color:' + borderColor + '">' +
+    '<div class="ticket-top"><div class="ticket-top-left">' +
+      '<span class="punch"></span>' +
+      '<span class="mono ticket-code">' + escapeHtml(t.code || '') + '</span>' +
+      (urgentActive ? '<span class="urgent-tag">🚩 URGENT</span>' : '') +
+    '</div><div class="ticket-top-right">' +
+      (t.photo ? '<span class="thumb" data-photo="' + t.id + '"><img src="' + t.photo + '" alt="issue"></span>' : '') +
+      (Array.isArray(t.notes) && t.notes.length ? '<span class="dim mono" style="font-size:10px;">💬' + t.notes.length + '</span>' : '') +
+      '<span class="cat-icon">' + cat.icon + '</span>' +
+    '</div></div>' +
+    '<div class="ticket-title display">' + escapeHtml(t.block) + ' · Rm ' + escapeHtml(t.room) + '</div>' +
+    '<div class="dash"></div>' +
+    '<div class="ticket-body"><p class="ticket-desc">' + escapeHtml(t.description) + '</p>' +
+      '<div class="ticket-meta"><span class="dim">' + (t.reportedBy ? escapeHtml(t.reportedBy) + ' · ' : '') + formatDate(t.reportedAt) + '</span>' +
+      '<span class="mono status-pill" style="background:' + st.color + '22;color:' + st.color + '">' + st.label.toUpperCase() + '</span></div>' +
+    '</div></button>';
+}
+
+function toggleGroup(block) {
+  if (collapsedBlocks.has(block)) collapsedBlocks.delete(block); else collapsedBlocks.add(block);
+  renderList();
+}
+
+function renderList() {
+  if (isBoardView()) renderStaffList(); else renderReporterList();
+}
+
+function renderReporterList() {
+  const listArea = document.getElementById('listArea');
+  if (loading) { listArea.innerHTML = '<div class="loading-wrap"><div class="spinner"></div></div>'; return; }
+  const sorted = [...tickets].sort((a, b) => new Date(b.reportedAt) - new Date(a.reportedAt));
+  if (sorted.length === 0) {
+    listArea.innerHTML = '<div class="empty-card">You haven\'t reported anything yet. Tap + to report an issue.</div>';
+    return;
+  }
+  listArea.innerHTML = sorted.map(ticketCardHtml).join('');
+}
+
+function renderStaffList() {
+  const listArea = document.getElementById('listArea');
+  if (loading) { listArea.innerHTML = '<div class="loading-wrap"><div class="spinner"></div></div>'; return; }
+
+  const filtered = tickets.filter(t => {
+    const archived = isArchived(t);
+    if (filterStatus === 'archived') return archived;
+    if (archived) return false;
+    if (filterStatus !== 'all' && t.status !== filterStatus) return false;
+    if (filterCategory !== 'all' && t.category !== filterCategory) return false;
+    if (filterUrgent && !t.urgent) return false;
+    if (searchQuery.trim()) {
+      const q = searchQuery.toLowerCase();
+      const hay = (t.block + ' ' + t.room + ' ' + t.description + ' ' + (t.reportedBy || '') + ' ' + t.code).toLowerCase();
+      if (!hay.includes(q)) return false;
+    }
+    return true;
+  }).sort((a, b) => {
+    const aUrg = a.urgent && a.status !== 'done';
+    const bUrg = b.urgent && b.status !== 'done';
+    if (aUrg !== bUrg) return aUrg ? -1 : 1;
+    return new Date(b.reportedAt) - new Date(a.reportedAt);
+  });
+
+  if (filtered.length === 0) {
+    listArea.innerHTML = '<div class="empty-card">' + (tickets.length === 0 ? 'No issues logged yet.' : 'Nothing matches these filters.') + '</div>';
+    return;
+  }
+
+  const byBlock = new Map();
+  filtered.forEach(t => {
+    if (!byBlock.has(t.block)) byBlock.set(t.block, []);
+    byBlock.get(t.block).push(t);
+  });
+  const knownOrder = BLOCKS.filter(b => byBlock.has(b));
+  const extras = [...byBlock.keys()].filter(b => !BLOCKS.includes(b)).sort();
+  const orderedBlockNames = knownOrder.concat(extras);
+
+  listArea.innerHTML = orderedBlockNames.map(block => {
+    const group = byBlock.get(block);
+    const collapsed = collapsedBlocks.has(block);
+    const urgentInGroup = group.some(t => t.urgent && t.status !== 'done');
+    return '<div class="block-group">' +
+      '<button type="button" class="block-group-header" data-group-toggle="' + escapeHtml(block) + '">' +
+        '<span class="block-group-title">' + (urgentInGroup ? '🚩 ' : '') + escapeHtml(block) + '</span>' +
+        '<span class="block-group-count">' + group.length + '</span>' +
+        '<span class="block-group-chevron">' + (collapsed ? '▸' : '▾') + '</span>' +
+      '</button>' +
+      (collapsed ? '' : '<div class="block-group-body">' + group.map(ticketCardHtml).join('') + '</div>') +
+    '</div>';
+  }).join('');
+}
+
+function openPhotoOverlay(url) {
+  document.getElementById('photoOverlayImg').src = url;
+  document.getElementById('photoOverlay').style.display = 'flex';
+}
+
+// ---------- Ticket detail ----------
+function notesHtml(t) {
+  const notes = Array.isArray(t.notes) ? t.notes : [];
+  if (notes.length === 0) return '<p class="dim" style="font-size:12px;margin:4px 0 8px;">No notes yet.</p>';
+  return notes.map(n =>
+    '<div class="note-row"><div class="note-meta"><strong>' + escapeHtml(n.byName || 'Someone') + '</strong>' +
+    '<span class="dim"> · ' + escapeHtml(n.byRole || '') + ' · ' + formatDate(n.at) + '</span></div>' +
+    '<p class="note-text">' + escapeHtml(n.text) + '</p></div>'
+  ).join('');
+}
+
+function openDetail(ticketId) {
+  detailTicketId = ticketId;
+  pendingStatus = null;
+  pendingDelete = false;
+  document.getElementById('detailOverlay').style.display = 'flex';
+  buildDetail();
+}
+function closeDetail() {
+  detailTicketId = null;
+  pendingStatus = null;
+  pendingDelete = false;
+  document.getElementById('detailOverlay').style.display = 'none';
+}
+function buildDetail() {
+  const t = tickets.find(x => x.id === detailTicketId);
+  if (!t) { closeDetail(); return; }
+  const cat = categoryMeta(t.category);
+  const st = statusMeta(t.status);
+  const urgentActive = t.urgent && t.status !== 'done';
+  const staff = canManageTickets();
+  const canInteract = !!currentUser;
+  const isOwner = currentUser && t.reportedByUid === currentUser.uid;
+  const canDelete = !staff && isOwner && t.status === 'pending';
+  const card = document.getElementById('detailCard');
+  card.innerHTML =
+    '<div class="modal-header"><h2 class="display mono" style="font-size:15px;">' + escapeHtml(t.code || '') + '</h2><button type="button" id="closeDetailBtn" class="icon-btn">✕</button></div>' +
+    (urgentActive ? '<div class="urgent-tag" style="margin-bottom:8px;">🚩 URGENT</div>' : '') +
+    '<div class="ticket-title display" style="padding:0 0 8px;">' + escapeHtml(t.block) + ' · Rm ' + escapeHtml(t.room) + '</div>' +
+    '<div style="display:flex;align-items:center;gap:6px;color:var(--muted);font-size:13px;margin-bottom:12px;">' + cat.icon + ' ' + escapeHtml(cat.label) + '</div>' +
+    '<p style="font-size:14px;line-height:1.5;margin:0 0 12px;">' + escapeHtml(t.description) + '</p>' +
+    (t.photo ? '<img src="' + t.photo + '" alt="issue" id="detailPhotoImg" style="width:100%;border-radius:10px;margin-bottom:12px;cursor:pointer;display:block;">' : '') +
+    '<div style="font-size:12px;color:var(--dim);margin-bottom:4px;">' + (t.reportedBy ? escapeHtml(t.reportedBy) + ' · ' : '') + formatDate(t.reportedAt) + '</div>' +
+    (t.contact ? '<div style="font-size:12px;color:var(--muted);margin-bottom:8px;">Access contact: <a href="tel:' + escapeHtml(t.contact) + '" style="color:#5B9BD5;">' + escapeHtml(t.contact) + '</a></div>' : '') +
+    '<div class="dash" style="margin:14px 0 4px;"></div>' +
+    (staff
+      ? ('<label class="field-label">Update status</label>' +
+         '<div class="status-opt-grid" id="statusGridDetail">' +
+           STATUSES.map(s => '<button type="button" class="status-opt-btn" data-status="' + s.id + '">' + s.label + '</button>').join('') +
+         '</div>' +
+         '<div id="statusConfirmArea"></div>')
+      : ('<label class="field-label">Status</label>' +
+         '<div style="margin-top:6px;"><span class="mono status-pill" style="background:' + st.color + '22;color:' + st.color + ';padding:4px 10px;font-size:11px;">' + st.label.toUpperCase() + '</span></div>')
+    ) +
+    (canInteract
+      ? ('<div class="dash" style="margin:14px 0 8px;"></div>' +
+         '<label class="field-label">Notes</label>' +
+         '<div id="notesListArea" style="margin-top:4px;">' + notesHtml(t) + '</div>' +
+         '<textarea id="newNoteText" class="input" rows="2" placeholder="Add a note..." style="margin-top:8px;"></textarea>' +
+         '<div id="noteErrorArea"></div>' +
+         '<button type="button" id="postNoteBtn" class="submit-btn" style="margin-top:6px;background:#5B9BD5;">Post note</button>')
+      : ''
+    ) +
+    (canDelete
+      ? ('<div class="dash" style="margin:16px 0 10px;"></div>' +
+         '<button type="button" id="deleteTicketBtn" class="delete-btn">Delete this report</button>' +
+         '<div id="deleteConfirmArea"></div>')
+      : ''
+    );
+
+  document.getElementById('closeDetailBtn').addEventListener('click', closeDetail);
+  if (t.photo) document.getElementById('detailPhotoImg').addEventListener('click', () => openPhotoOverlay(t.photo));
+  if (staff) {
+    document.getElementById('statusGridDetail').addEventListener('click', (e) => {
+      const btn = e.target.closest('.status-opt-btn');
+      if (!btn) return;
+      selectPendingStatus(btn.dataset.status);
+    });
+    updateDetailConfirmArea();
+  }
+  if (canInteract) document.getElementById('postNoteBtn').addEventListener('click', postNote);
+  if (canDelete) {
+    document.getElementById('deleteTicketBtn').addEventListener('click', () => { pendingDelete = true; updateDeleteConfirmArea(); });
+    updateDeleteConfirmArea();
+  }
+}
+function selectPendingStatus(newStatus) {
+  const t = tickets.find(x => x.id === detailTicketId);
+  if (!t || newStatus === t.status) { pendingStatus = null; updateDetailConfirmArea(); return; }
+  pendingStatus = newStatus;
+  updateDetailConfirmArea();
+}
+function cancelPendingStatus() { pendingStatus = null; updateDetailConfirmArea(); }
+async function confirmPendingStatus() {
+  const t = tickets.find(x => x.id === detailTicketId);
+  if (!t || !pendingStatus) return;
+  const newStatus = pendingStatus;
+  const resolvedAt = newStatus === 'done' ? new Date().toISOString() : null;
+  const btn = document.getElementById('confirmStatusBtn');
+  if (btn) { btn.disabled = true; btn.textContent = 'Saving...'; }
+  try {
+    await updateDoc(doc(db, 'tickets', t.id), { status: newStatus, resolvedAt });
+    setDoc(doc(db, 'publicBoard', t.id), { status: newStatus, resolvedAt }, { merge: true }).catch(e => console.error('public mirror update failed', e));
+    pendingStatus = null;
+    updateDetailConfirmArea();
+  } catch (e) {
+    console.error(e);
+    errorMsg = 'Status change did not save. Try again.';
+    pendingStatus = null;
+    updateDetailConfirmArea();
+    render();
+  }
+}
+function updateDetailConfirmArea() {
+  const area = document.getElementById('statusConfirmArea');
+  if (!area) return;
+  if (pendingStatus) {
+    const meta = statusMeta(pendingStatus);
+    area.innerHTML = '<div class="confirm-bar"><span>Mark as <strong style="color:' + meta.color + '">' + meta.label + '</strong>?</span>' +
+      '<div class="confirm-actions"><button type="button" id="cancelStatusBtn" class="confirm-cancel">Cancel</button>' +
+      '<button type="button" id="confirmStatusBtn" class="confirm-ok">Confirm</button></div></div>';
+    document.getElementById('cancelStatusBtn').addEventListener('click', cancelPendingStatus);
+    document.getElementById('confirmStatusBtn').addEventListener('click', confirmPendingStatus);
+  } else {
+    area.innerHTML = '';
+  }
+  const t = tickets.find(x => x.id === detailTicketId);
+  document.querySelectorAll('#statusGridDetail .status-opt-btn').forEach(btn => {
+    const meta = statusMeta(btn.dataset.status);
+    const isCurrent = t && btn.dataset.status === t.status;
+    const isPending = btn.dataset.status === pendingStatus;
+    if (isPending) { btn.style.borderColor = meta.color; btn.style.background = meta.color; btn.style.color = '#0B1220'; }
+    else if (isCurrent) { btn.style.borderColor = meta.color; btn.style.background = meta.color + '22'; btn.style.color = meta.color; }
+    else { btn.style.borderColor = '#2A3550'; btn.style.background = 'transparent'; btn.style.color = '#8B96AD'; }
+  });
+}
+async function postNote() {
+  const t = tickets.find(x => x.id === detailTicketId);
+  if (!t) return;
+  const textEl = document.getElementById('newNoteText');
+  const text = textEl.value.trim();
+  if (!text) return;
+  const btn = document.getElementById('postNoteBtn');
+  if (btn) { btn.disabled = true; btn.textContent = 'Posting...'; }
+  const note = {
+    text,
+    byName: currentName || (currentUser && currentUser.email) || 'Someone',
+    byRole: currentRole || 'reporter',
+    at: new Date().toISOString(),
+  };
+  try {
+    await updateDoc(doc(db, 'tickets', t.id), { notes: arrayUnion(note) });
+    textEl.value = '';
+  } catch (e) {
+    console.error(e);
+    const area = document.getElementById('noteErrorArea');
+    if (area) area.innerHTML = '<p class="form-error">Could not post that note. Try again.</p>';
+  } finally {
+    if (btn) { btn.disabled = false; btn.textContent = 'Post note'; }
+  }
+}
+function updateDeleteConfirmArea() {
+  const area = document.getElementById('deleteConfirmArea');
+  if (!area) return;
+  if (pendingDelete) {
+    area.innerHTML = '<div class="confirm-bar"><span>Delete this report?</span>' +
+      '<div class="confirm-actions"><button type="button" id="cancelDeleteBtn" class="confirm-cancel">Cancel</button>' +
+      '<button type="button" id="confirmDeleteBtn" class="confirm-ok" style="background:#E15554;">Delete</button></div></div>';
+    document.getElementById('cancelDeleteBtn').addEventListener('click', () => { pendingDelete = false; updateDeleteConfirmArea(); });
+    document.getElementById('confirmDeleteBtn').addEventListener('click', confirmDeleteTicket);
+  } else {
+    area.innerHTML = '';
+  }
+}
+async function confirmDeleteTicket() {
+  const t = tickets.find(x => x.id === detailTicketId);
+  if (!t) return;
+  const btn = document.getElementById('confirmDeleteBtn');
+  if (btn) { btn.disabled = true; btn.textContent = 'Deleting...'; }
+  try {
+    await deleteDoc(doc(db, 'tickets', t.id));
+    deleteDoc(doc(db, 'publicBoard', t.id)).catch(e => console.error('public mirror delete failed', e));
+    closeDetail();
+  } catch (e) {
+    console.error(e);
+    errorMsg = 'Could not delete. Try again.';
+    pendingDelete = false;
+    updateDeleteConfirmArea();
+    render();
+  }
+}
+
+// ---------- Admin: manage staff accounts ----------
+function openAdmin() {
+  adminError = ''; adminBusy = false; editingUserId = null; editDraft = null; newStaffRole = 'maintainer'; newStaffSpecialty = 'all'; lastStaffCreated = null;
+  document.getElementById('adminOverlay').style.display = 'flex';
+  buildAdmin();
+}
+function closeAdmin() {
+  document.getElementById('adminOverlay').style.display = 'none';
+}
+function buildAdmin() {
+  const card = document.getElementById('adminCard');
+  card.innerHTML =
+    '<div class="modal-header"><h2 class="display">Manage</h2><button type="button" id="closeAdminBtn" class="icon-btn">✕</button></div>' +
+    '<label class="field-label">Add a new staff account</label>' +
+    '<input id="newStaffName" class="input" placeholder="Full name" style="margin:6px 0;">' +
+    '<input id="newStaffEmail" class="input" placeholder="Email" style="margin-bottom:6px;">' +
+    '<input id="newStaffPassword" class="input" placeholder="Temporary password (min 6 characters)" style="margin-bottom:8px;">' +
+    '<label class="field-label">Role</label>' +
+    '<div class="cat-grid" id="newStaffRoleGrid" style="grid-template-columns:1fr 1fr;margin-bottom:8px;">' +
+      '<button type="button" class="cat-btn cat-btn-active" data-staff-role="maintainer"><span>🔧</span><span class="cat-btn-label">Maintainer</span></button>' +
+      '<button type="button" class="cat-btn" data-staff-role="supervisor"><span>👁️</span><span class="cat-btn-label">Supervisor</span></button>' +
+    '</div>' +
+    '<div id="newStaffSpecialtyArea">' +
+      '<label class="field-label">Specialty</label>' +
+      '<div class="cat-grid" id="newStaffSpecialtyGrid" style="grid-template-columns:repeat(5,1fr);margin-bottom:8px;">' +
+        SPECIALTIES.map(s => '<button type="button" class="cat-btn' + (s.id === 'all' ? ' cat-btn-active' : '') + '" data-specialty="' + s.id + '"><span class="cat-btn-label">' + escapeHtml(s.label.split(' ')[0]) + '</span></button>').join('') +
+      '</div>' +
+    '</div>' +
+    '<div id="adminErrorArea"></div>' +
+    '<button type="button" id="createStaffBtn" class="submit-btn" style="margin-bottom:12px;">Create account</button>' +
+    '<p style="font-size:11px;color:var(--dim);margin:0 0 12px;">There\'s no automatic email — after creating an account, copy the message below and send it yourself (WhatsApp, email, in person).</p>' +
+    '<div id="staffCreatedArea"></div>' +
+    '<div class="dash" style="margin-bottom:12px;"></div>' +
+    '<label class="field-label">All accounts — tap any account to change their role, specialty, or RA block(s)</label>' +
+    '<div id="userListArea" style="margin-top:8px;">Loading…</div>';
+
+  document.getElementById('closeAdminBtn').addEventListener('click', closeAdmin);
+  document.getElementById('createStaffBtn').addEventListener('click', handleCreateStaff);
+  document.getElementById('newStaffRoleGrid').addEventListener('click', (e) => {
+    const btn = e.target.closest('[data-staff-role]');
+    if (!btn) return;
+    newStaffRole = btn.dataset.staffRole;
+    document.querySelectorAll('#newStaffRoleGrid .cat-btn').forEach(b => b.classList.toggle('cat-btn-active', b.dataset.staffRole === newStaffRole));
+    document.getElementById('newStaffSpecialtyArea').style.display = newStaffRole === 'maintainer' ? 'block' : 'none';
+  });
+  document.getElementById('newStaffSpecialtyGrid').addEventListener('click', (e) => {
+    const btn = e.target.closest('[data-specialty]');
+    if (!btn) return;
+    newStaffSpecialty = btn.dataset.specialty;
+    document.querySelectorAll('#newStaffSpecialtyGrid .cat-btn').forEach(b => b.classList.toggle('cat-btn-active', b.dataset.specialty === newStaffSpecialty));
+  });
+  document.getElementById('userListArea').addEventListener('click', (e) => {
+    const editBtn = e.target.closest('[data-edit-user]');
+    if (editBtn) {
+      const uid = editBtn.dataset.editUser;
+      if (editingUserId === uid) { editingUserId = null; editDraft = null; }
+      else {
+        const u = lastLoadedUsers.find(x => x.id === uid);
+        editingUserId = uid;
+        editDraft = u ? { role: u.role, specialty: u.specialty || 'all', assignedBlocks: [...(u.assignedBlocks || [])] } : { role: 'reporter', specialty: 'all', assignedBlocks: [] };
+      }
+      renderUserListFromCache();
+      return;
+    }
+    const roleBtn = e.target.closest('[data-role-opt]');
+    if (roleBtn) { editDraft.role = roleBtn.dataset.roleOpt; renderUserListFromCache(); return; }
+    const specBtn = e.target.closest('[data-specialty-opt]');
+    if (specBtn) { editDraft.specialty = specBtn.dataset.specialty; renderUserListFromCache(); return; }
+    const saveBtn = e.target.closest('[data-save-user-btn]');
+    if (saveBtn) { saveUserChanges(saveBtn.dataset.uid); return; }
+  });
+  loadUserList();
+  updateAdminError();
+}
+function updateAdminError() {
+  const area = document.getElementById('adminErrorArea');
+  if (area) area.innerHTML = adminError ? '<p class="form-error">' + escapeHtml(adminError) + '</p>' : '';
+  const btn = document.getElementById('createStaffBtn');
+  if (btn) { btn.disabled = adminBusy; btn.textContent = adminBusy ? 'Creating...' : 'Create account'; }
+}
+function roleBlurb(role, specialty) {
+  if (role === 'maintainer') {
+    return (specialty && specialty !== 'all')
+      ? 'You\'ll see and update maintenance tickets for ' + specialtyLabel(specialty) + ' issues only.'
+      : 'You\'ll see and update maintenance tickets across all categories.';
+  }
+  if (role === 'supervisor') return 'You\'ll see every ticket for oversight, plus the Summary panel — you can\'t change ticket statuses.';
+  return '';
+}
+function buildStaffMessage(name, email, password, role, specialty) {
+  const roleLabel = role === 'maintainer' ? 'Maintainer' + (specialty && specialty !== 'all' ? ' (' + specialtyLabel(specialty) + ')' : ' (all categories)') : 'Supervisor';
+  return 'Hi ' + name + ', you\'ve been added to the BIUST Maintenance & Facilities Log as a ' + roleLabel + '.\n' +
+    'Login: https://yunghit.github.io/Biust-Maintenance-Log/\n' +
+    'Email: ' + email + '\n' +
+    'Temporary password: ' + password + '\n' +
+    roleBlurb(role, specialty) + '\n' +
+    'Please change your password after logging in (Forgot password on the login screen works even for a first change).';
+}
+function updateStaffCreatedArea() {
+  const area = document.getElementById('staffCreatedArea');
+  if (!area) return;
+  if (!lastStaffCreated) { area.innerHTML = ''; return; }
+  area.innerHTML =
+    '<textarea id="staffMsgText" class="input" rows="6" readonly style="margin-bottom:8px;font-size:12px;">' + escapeHtml(lastStaffCreated) + '</textarea>' +
+    '<button type="button" id="copyStaffMsgBtn" class="submit-btn" style="background:#5B9BD5;margin-bottom:16px;">Copy message</button>';
+  document.getElementById('copyStaffMsgBtn').addEventListener('click', async () => {
+    const btn = document.getElementById('copyStaffMsgBtn');
+    try {
+      await navigator.clipboard.writeText(lastStaffCreated);
+      if (btn) { btn.textContent = 'Copied!'; setTimeout(() => { if (btn) btn.textContent = 'Copy message'; }, 1500); }
+    } catch (e) {
+      const ta = document.getElementById('staffMsgText');
+      if (ta) { ta.focus(); ta.select(); }
+    }
+  });
+}
+async function handleCreateStaff() {
+  const name = document.getElementById('newStaffName').value.trim();
+  const email = document.getElementById('newStaffEmail').value.trim();
+  const password = document.getElementById('newStaffPassword').value;
+  if (!name || !email || !password || password.length < 6) {
+    adminError = 'Fill in name, email, and a password of at least 6 characters.';
+    updateAdminError();
+    return;
+  }
+  adminError = ''; adminBusy = true; updateAdminError();
+  try {
+    const cred = await createUserWithEmailAndPassword(secondaryAuth, email, password);
+    await updateProfile(cred.user, { displayName: name });
+    const userDoc = { email, name, role: newStaffRole, createdAt: new Date().toISOString(), createdBy: currentUser.uid };
+    if (newStaffRole === 'maintainer') userDoc.specialty = newStaffSpecialty;
+    await setDoc(doc(db, 'users', cred.user.uid), userDoc);
+    await signOut(secondaryAuth);
+    lastStaffCreated = buildStaffMessage(name, email, password, newStaffRole, newStaffSpecialty);
+    document.getElementById('newStaffName').value = '';
+    document.getElementById('newStaffEmail').value = '';
+    document.getElementById('newStaffPassword').value = '';
+    adminBusy = false;
+    updateAdminError();
+    updateStaffCreatedArea();
+    loadUserList();
+  } catch (e) {
+    console.error(e);
+    adminError = friendlyAuthError(e);
+    adminBusy = false;
+    updateAdminError();
+  }
+}
+const ROLE_LABELS = { admin: 'Admin', maintainer: 'Maintainer', supervisor: 'Supervisor', reporter: 'RA' };
+const ROLE_OPTIONS = [
+  { id: 'reporter', label: 'RA' },
+  { id: 'maintainer', label: 'Maintainer' },
+  { id: 'supervisor', label: 'Supervisor' },
+  { id: 'admin', label: 'Admin' },
+];
+function renderUserRow(u) {
+  const extra = u.role === 'maintainer'
+    ? specialtyLabel(u.specialty || 'all')
+    : (u.role === 'reporter' && Array.isArray(u.assignedBlocks) && u.assignedBlocks.length)
+      ? 'RA: ' + u.assignedBlocks.join(', ')
+      : '';
+  const isEditing = editingUserId === u.id;
+  let html = '<div class="user-row-wrap">' +
+    '<button type="button" class="user-row" data-edit-user="' + u.id + '">' +
+      '<span>' + escapeHtml(u.name || u.email) + '<br><span class="dim" style="font-size:11px;">' + escapeHtml(u.email) + (extra ? ' · ' + escapeHtml(extra) : '') + '</span></span>' +
+      '<span class="mono" style="font-size:11px;color:var(--muted);">' + escapeHtml(ROLE_LABELS[u.role] || u.role) + (isEditing ? ' ▾' : ' ▸') + '</span>' +
+    '</button>';
+  if (isEditing) html += renderUserEditor(u);
+  html += '</div>';
+  return html;
+}
+function renderUserEditor(u) {
+  const draft = (editingUserId === u.id && editDraft) ? editDraft : { role: u.role, specialty: u.specialty || 'all', assignedBlocks: u.assignedBlocks || [] };
+  let html = '<div class="user-editor"><label class="field-label">Role</label>' +
+    '<div class="cat-grid" style="grid-template-columns:repeat(4,1fr);">' +
+      ROLE_OPTIONS.map(r => '<button type="button" class="cat-btn' + (draft.role === r.id ? ' cat-btn-active' : '') + '" data-role-opt="' + r.id + '" data-uid="' + u.id + '"><span class="cat-btn-label">' + r.label + '</span></button>').join('') +
+    '</div>';
+  if (draft.role === 'maintainer') {
+    html += '<label class="field-label" style="margin-top:8px;">Specialty</label><div class="cat-grid" style="grid-template-columns:repeat(5,1fr);">' +
+      SPECIALTIES.map(s => '<button type="button" class="cat-btn' + (draft.specialty === s.id ? ' cat-btn-active' : '') + '" data-specialty-opt data-uid="' + u.id + '" data-specialty="' + s.id + '"><span class="cat-btn-label">' + escapeHtml(s.label.split(' ')[0]) + '</span></button>').join('') +
+    '</div>';
+  }
+  if (draft.role === 'reporter') {
+    html += '<label class="field-label" style="margin-top:8px;">RA for which residential block(s)?</label>' +
+      '<div class="block-check-grid" id="blockCheckGrid-' + u.id + '">' +
+        RESIDENTIAL_BLOCKS.map(b => '<label class="block-check"><input type="checkbox" value="' + escapeHtml(b) + '"' + ((draft.assignedBlocks || []).includes(b) ? ' checked' : '') + '> ' + escapeHtml(b) + '</label>').join('') +
+      '</div>';
+  }
+  html += '<button type="button" class="submit-btn" data-save-user-btn data-uid="' + u.id + '" style="margin-top:8px;background:#5B9BD5;">Save changes</button></div>';
+  return html;
+}
+function renderUserListFromCache() {
+  const area = document.getElementById('userListArea');
+  if (!area) return;
+  area.innerHTML = lastLoadedUsers.map(renderUserRow).join('') || '<p class="dim" style="font-size:12px;">No accounts yet.</p>';
+}
+async function saveUserChanges(uid) {
+  if (!editDraft) return;
+  const btn = document.querySelector('[data-save-user-btn][data-uid="' + uid + '"]');
+  if (btn) { btn.disabled = true; btn.textContent = 'Saving...'; }
+  const update = { role: editDraft.role };
+  if (editDraft.role === 'maintainer') update.specialty = editDraft.specialty || 'all';
+  if (editDraft.role === 'reporter') {
+    const grid = document.getElementById('blockCheckGrid-' + uid);
+    update.assignedBlocks = grid ? [...grid.querySelectorAll('input[type=checkbox]:checked')].map(cb => cb.value) : [];
+  }
+  try {
+    await updateDoc(doc(db, 'users', uid), update);
+    editingUserId = null;
+    editDraft = null;
+    loadUserList();
+  } catch (e) {
+    console.error(e);
+    adminError = 'Could not save changes. Try again.';
+    updateAdminError();
+    if (btn) { btn.disabled = false; btn.textContent = 'Save changes'; }
+  }
+}
+async function loadUserList() {
+  const area = document.getElementById('userListArea');
+  if (!area) return;
+  try {
+    const snap = await getDocs(usersCol);
+    const rankOf = { admin: 0, supervisor: 1, maintainer: 2, reporter: 3 };
+    const rows = snap.docs.map(d => ({ id: d.id, ...d.data() })).sort((a, b) => (rankOf[a.role] ?? 4) - (rankOf[b.role] ?? 4));
+    lastLoadedUsers = rows;
+    area.innerHTML = rows.map(renderUserRow).join('') || '<p class="dim" style="font-size:12px;">No accounts yet.</p>';
+  } catch (e) {
+    console.error(e);
+    area.innerHTML = '<p class="form-error">Could not load accounts.</p>';
+  }
+}
+
+// ---------- Summary (admin + supervisor) ----------
+function openSummary() {
+  document.getElementById('summaryOverlay').style.display = 'flex';
+  buildSummary();
+}
+function closeSummary() {
+  document.getElementById('summaryOverlay').style.display = 'none';
+}
+function buildSummary() {
+  const byBlock = new Map();
+  BLOCKS.forEach(b => byBlock.set(b, { pending: 0, in_progress: 0, no_access: 0, done: 0, urgent: 0, total: 0 }));
+  tickets.forEach(t => {
+    if (!byBlock.has(t.block)) byBlock.set(t.block, { pending: 0, in_progress: 0, no_access: 0, done: 0, urgent: 0, total: 0 });
+    const row = byBlock.get(t.block);
+    row[t.status] = (row[t.status] || 0) + 1;
+    row.total++;
+    if (t.urgent && t.status !== 'done') row.urgent++;
+  });
+  const rowsHtml = [...byBlock.entries()].map(([b, r]) =>
+    '<tr><td>' + escapeHtml(b) + (r.urgent ? ' 🚩' : '') + '</td><td>' + r.pending + '</td><td>' + r.in_progress + '</td><td>' + r.no_access + '</td><td>' + r.done + '</td><td>' + r.total + '</td></tr>'
+  ).join('');
+
+  const card = document.getElementById('summaryCard');
+  card.innerHTML =
+    '<div class="modal-header"><h2 class="display">Summary by location</h2><button type="button" id="closeSummaryBtn" class="icon-btn">✕</button></div>' +
+    '<table class="summary-table"><thead><tr><th>Location</th><th>Pend</th><th>Prog</th><th>No acc</th><th>Done</th><th>Total</th></tr></thead><tbody>' + rowsHtml + '</tbody></table>' +
+    '<div class="dash" style="margin:16px 0 12px;"></div>' +
+    '<label class="field-label">Export</label>' +
+    '<select id="exportBlockSelect" class="input" style="margin:6px 0;">' +
+      '<option value="__all__">All locations</option>' +
+      BLOCK_GROUPS.map(g => '<optgroup label="' + escapeHtml(g.label) + '">' + g.options.map(b => '<option value="' + escapeHtml(b) + '">' + escapeHtml(b) + '</option>').join('') + '</optgroup>').join('') +
+    '</select>' +
+    '<button type="button" id="exportBtn" class="submit-btn" style="background:#5B9BD5;">Download Excel</button>';
+
+  document.getElementById('closeSummaryBtn').addEventListener('click', closeSummary);
+  document.getElementById('exportBtn').addEventListener('click', handleExport);
+}
+function ticketsToWorkbook(list) {
+  const headers = ['Code','Location','Room','Category','Description','Status','Urgent','Reported By','Reported At','Resolved At','Notes'];
+  const rows = list.map(t => [
+    t.code || '', t.block || '', t.room || '', categoryMeta(t.category).label, t.description || '',
+    statusMeta(t.status).label, t.urgent ? 'Yes' : 'No', t.reportedBy || '', t.reportedAt || '', t.resolvedAt || '',
+    (Array.isArray(t.notes) ? t.notes.map(n => (n.byName + ': ' + n.text)).join(' | ') : ''),
+  ]);
+  const ws = XLSX.utils.aoa_to_sheet([headers, ...rows]);
+  ws['!cols'] = [{ wch: 14 }, { wch: 16 }, { wch: 8 }, { wch: 12 }, { wch: 36 }, { wch: 12 }, { wch: 7 }, { wch: 16 }, { wch: 18 }, { wch: 18 }, { wch: 40 }];
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, 'Tickets');
+  return wb;
+}
+function downloadWorkbook(list, filenameHint) {
+  if (typeof XLSX === 'undefined') {
+    errorMsg = 'Could not load the Excel export library. Check your connection and try again.';
+    render();
+    return;
+  }
+  const wb = ticketsToWorkbook(list);
+  XLSX.writeFile(wb, 'bmf-log-' + filenameHint.replace(/\s+/g, '-').toLowerCase() + '-' + new Date().toISOString().slice(0, 10) + '.xlsx');
+}
+function handleExport() {
+  const sel = document.getElementById('exportBlockSelect').value;
+  const list = sel === '__all__' ? tickets : tickets.filter(t => t.block === sel);
+  downloadWorkbook(list, sel === '__all__' ? 'all' : sel);
+}
+
+// ---------- Event delegation ----------
+document.getElementById('searchInput').addEventListener('input', (e) => { searchQuery = e.target.value; renderList(); });
+document.getElementById('statusChips').addEventListener('click', (e) => {
+  const btn = e.target.closest('button[data-filter-status]');
+  if (!btn) return;
+  filterStatus = btn.dataset.filterStatus;
+  render();
+});
+document.getElementById('categoryChips').addEventListener('click', (e) => {
+  const catBtn = e.target.closest('button[data-filter-category]');
+  const urgentBtn = e.target.closest('button[data-filter-urgent]');
+  if (catBtn) { filterCategory = catBtn.dataset.filterCategory; render(); }
+  else if (urgentBtn) { filterUrgent = !filterUrgent; render(); }
+});
+document.getElementById('listArea').addEventListener('click', (e) => {
+  const photoEl = e.target.closest('[data-photo]');
+  if (photoEl) {
+    const t = tickets.find(x => x.id === photoEl.dataset.photo);
+    if (t && t.photo) openPhotoOverlay(t.photo);
+    return;
+  }
+  const groupEl = e.target.closest('[data-group-toggle]');
+  if (groupEl) { toggleGroup(groupEl.dataset.groupToggle); return; }
+  const cardEl = e.target.closest('[data-detail-id]');
+  if (cardEl) openDetail(cardEl.dataset.detailId);
+});
+document.getElementById('fabBtn').addEventListener('click', openForm);
+document.getElementById('modalOverlay').addEventListener('click', (e) => { if (e.target.id === 'modalOverlay') closeForm(); });
+document.getElementById('detailOverlay').addEventListener('click', (e) => { if (e.target.id === 'detailOverlay') closeDetail(); });
+document.getElementById('adminOverlay').addEventListener('click', (e) => { if (e.target.id === 'adminOverlay') closeAdmin(); });
+document.getElementById('summaryOverlay').addEventListener('click', (e) => { if (e.target.id === 'summaryOverlay') closeSummary(); });
+document.getElementById('photoOverlay').addEventListener('click', () => { document.getElementById('photoOverlay').style.display = 'none'; });
+
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('./sw.js').catch((e) => console.error('SW registration failed', e));
+  });
+}
+</script>
+</body>
+</html>

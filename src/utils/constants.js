@@ -128,3 +128,21 @@ export const CATEGORY_COLORS = {
   wifi: '#A78BFA',
   inventory: '#F472B6',
 };
+
+// ---------------------------------------------------------------------------------------------
+// Service targets (SLAs): how long each kind of fault should take, from report to Done. Used for the
+// "Needs attention" list on the dashboard and the SLA figures in the Summary. Edit to match real policy.
+// ---------------------------------------------------------------------------------------------
+export const SLA_HOURS = {
+  electricity: 72,   // 3 days
+  plumbing: 48,      // 2 days
+  furniture: 168,    // 7 days (carpentry)
+  access: 48,
+  transport: 48,
+  wifi: 72,
+  inventory: 336,    // 14 days
+};
+export const DEFAULT_SLA_HOURS = 72;
+export const URGENT_SLA_HOURS = 24;      // an urgent ticket is held to the shorter of 24h and its category target
+export const NO_ACCESS_ALERT_DAYS = 3;   // "No access" for longer than this needs a nudge
+export const UNASSIGNED_ALERT_HOURS = 24;

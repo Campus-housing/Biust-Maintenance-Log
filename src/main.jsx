@@ -4,6 +4,8 @@ import './index.css';
 import App from './App.jsx';
 import { AuthProvider } from './contexts/AuthContext';
 import { ToastProvider } from './contexts/ToastContext';
+import UpdateBanner from './components/UpdateBanner';
+import { registerUpdates } from './utils/updates';
 import { configMissing } from './firebase';
 
 function ConfigMissingNotice() {
@@ -28,11 +30,8 @@ ReactDOM.createRoot(document.getElementById('root')).render(
         </ToastProvider>
       </AuthProvider>
     )}
+    <UpdateBanner />
   </React.StrictMode>
 );
 
-if ('serviceWorker' in navigator) {
-  window.addEventListener('load', () => {
-    navigator.serviceWorker.register(`${import.meta.env.BASE_URL}sw.js`).catch((e) => console.error('SW registration failed', e));
-  });
-}
+registerUpdates();

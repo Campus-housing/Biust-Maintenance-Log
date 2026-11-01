@@ -142,3 +142,5 @@ export async function parseIssueFile(file) {
 }
 
 export { emptyDraft };
+
+export { parseLine, findBlockInText, guessCategory, padFloorCode, CATEGORY_KEYWORDS };

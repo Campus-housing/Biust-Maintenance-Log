@@ -6,6 +6,8 @@ import { useToast } from '../contexts/ToastContext';
 import { BLOCK_GROUPS, CATEGORIES } from '../utils/constants';
 import { categoryMeta, formatDate, makeTicketCode, publicMirror, semesterForDate, blockLabel } from '../utils/helpers';
 import RoomField from './RoomField';
+import WhatsAppImport from './WhatsAppImport';
+import { BLOCKS } from '../utils/constants';
 
 function SubmissionCard({ s, onAccept, onDecline }) {
   const [open, setOpen] = useState(false);
@@ -49,7 +51,7 @@ function SubmissionCard({ s, onAccept, onDecline }) {
         <span>
           <strong>{s.block ? blockLabel(s.block) : '(no location given)'}{s.room ? ' · ' + (/^[A-Za-z]{0,2}\d{1,3}[A-Za-z]?$/.test(s.room) ? 'Rm ' + s.room : s.room) : ''}</strong>
           <br /><span className="dim" style={{ fontSize: 11 }}>{cat.icon} {s.description}</span>
-          <br /><span className="dim" style={{ fontSize: 10 }}>{formatDate(s.submittedAt)}{s.reportedBy ? ' · ' + s.reportedBy : ''}{s.contact ? ' · 📞 ' + s.contact : ''}</span>
+          <br /><span className="dim" style={{ fontSize: 10 }}>{formatDate(s.originalReportedAt || s.submittedAt)}{s.source === 'whatsapp' ? ' · WhatsApp' : ''}{s.reportedBy ? ' · ' + s.reportedBy : ''}{s.contact ? ' · 📞 ' + s.contact : ''}</span>
         </span>
         <span className="mono" style={{ fontSize: 11, color: 'var(--muted)' }}>{s.urgent ? '🚩 ' : ''}{open ? '▾' : '▸'}</span>
       </button>
@@ -109,6 +111,8 @@ export default function SubmissionsPanel({ onClose }) {
   const showToast = useToast();
   const [submissions, setSubmissions] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [importOpen, setImportOpen] = useState(false);
+  const [bulkBusy, setBulkBusy] = useState(false);
 
   useEffect(() => {
     const q = isAdmin
@@ -125,18 +129,20 @@ export default function SubmissionsPanel({ onClose }) {
     return unsub;
   }, [isAdmin, assignedBlocks]);
 
-  async function handleAccept(submission, draft) {
+  async function handleAccept(submission, draft, quiet = false) {
+    const reportedAt = submission.originalReportedAt || submission.submittedAt || new Date().toISOString();
     const code = makeTicketCode(draft.block, draft.room);
     const ticket = {
       code, block: draft.block, room: draft.room.trim(), category: draft.category,
       description: draft.description.trim(), reportedBy: submission.reportedBy || '', contact: draft.contact.trim(),
       urgent: !!draft.urgent, photo: submission.photo || null,
-      status: 'pending', reportedAt: submission.submittedAt || new Date().toISOString(), acceptedAt: new Date().toISOString(),
-      resolvedAt: null, semester: semesterForDate(submission.submittedAt).id,
+      status: 'pending', reportedAt, acceptedAt: new Date().toISOString(),
+      resolvedAt: null, semester: semesterForDate(reportedAt).id,
+      ...(submission.source ? { source: submission.source, sourceKey: submission.sourceKey || '' } : {}),
       reportedByUid: currentUser.uid,
       ...(submission.submittedByUid ? { studentUid: submission.submittedByUid, studentEmail: submission.submittedByEmail || '' } : {}),
       notes: [{
-        text: 'Accepted from a student submission.', byName: name || currentUser.email, byRole: 'system', at: new Date().toISOString(), isSystem: true,
+        text: submission.source === 'whatsapp' ? 'Imported from a WhatsApp chat (sent by ' + (submission.reportedBy || 'unknown') + ').' : 'Accepted from a student submission.', byName: name || currentUser.email, byRole: 'system', at: new Date().toISOString(), isSystem: true,
       }],
     };
     const ref = await addDoc(ticketsCol, ticket);
@@ -144,7 +150,24 @@ export default function SubmissionsPanel({ onClose }) {
     await updateDoc(doc(db, 'submissions', submission.id), {
       status: 'accepted', reviewedBy: currentUser.uid, reviewedByName: name || currentUser.email, reviewedAt: new Date().toISOString(), linkedTicketId: ref.id,
     });
-    showToast('Accepted — now a ticket');
+    if (!quiet) showToast('Accepted — now a ticket');
+  }
+
+  // Admin convenience for a big backlog: turns every waiting report that has a location and a description into a ticket.
+  async function acceptAll() {
+    if (!window.confirm('Accept all ' + submissions.length + ' waiting reports as tickets? Any without a valid location or description are left for you to review.')) return;
+    setBulkBusy(true);
+    let ok = 0; let left = 0;
+    for (const s of [...submissions]) {
+      if (!BLOCKS.includes(s.block) || !(s.description || '').trim()) { left++; continue; }
+      try {
+        // eslint-disable-next-line no-await-in-loop
+        await handleAccept(s, { block: s.block, room: s.room || '', category: s.category || 'access', description: s.description, contact: s.contact || '', urgent: !!s.urgent }, true);
+        ok++;
+      } catch (e) { console.error(e); left++; }
+    }
+    setBulkBusy(false);
+    showToast(ok + ' accepted' + (left ? ', ' + left + ' left to review' : ''));
   }
 
   async function handleDecline(submission) {
@@ -161,6 +184,12 @@ export default function SubmissionsPanel({ onClose }) {
           <h2 className="display">Inbox</h2>
           <button type="button" className="icon-btn" onClick={onClose}>✕</button>
         </div>
+        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 12 }}>
+          <button type="button" className="badge-btn" onClick={() => setImportOpen(true)}>💬 Import from WhatsApp</button>
+          {isAdmin && submissions.length > 1 && (
+            <button type="button" className="badge-btn" disabled={bulkBusy} onClick={acceptAll}>{bulkBusy ? 'Accepting…' : 'Accept all (' + submissions.length + ')'}</button>
+          )}
+        </div>
         <p className="dim" style={{ fontSize: 12, marginTop: -8, marginBottom: 14 }}>
           Reports sent in without logging in. Review, adjust anything that needs fixing, then accept to turn it into a real ticket — or decline if it's not a real issue.
         </p>
@@ -174,6 +203,7 @@ export default function SubmissionsPanel({ onClose }) {
           ))
         )}
       </div>
+      {importOpen && <WhatsAppImport onClose={() => setImportOpen(false)} />}
     </div>
   );
 }

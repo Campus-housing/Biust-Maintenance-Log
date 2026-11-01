@@ -40,3 +40,33 @@ export const ROOMS_BY_BLOCK = {
 export function roomsFor(block) {
   return ROOMS_BY_BLOCK[block] || [];
 }
+
+// ---------------------------------------------------------------------------------------------
+// Common areas. The tracker's lists only named some (ablutions, laundries) and only for some blocks, so every
+// location now also gets sensible defaults. These are suggestions only — anything can still be typed.
+// Edit freely: residences share one list, campus facilities each have their own.
+// ---------------------------------------------------------------------------------------------
+const roomLike = (x) => /^[A-Za-z]{0,2}\d{1,3}[A-Za-z]?$/.test(x);
+
+export const RESIDENCE_AREAS = [
+  'Kitchenette', 'Ablution', 'Common room', 'Laundry room', 'Passage / corridor',
+  'Stairwell', 'Entrance / lobby', 'Study room', 'Outside / grounds',
+];
+const FACILITY_AREAS = {
+  'Student Center': ['Main hall', 'Offices', 'Kitchen', 'Toilets', 'Game room', 'Passage / corridor', 'Outside / grounds'],
+  'Admin': ['Reception', 'Offices', 'Boardroom', 'Toilets', 'Passage / corridor', 'Outside / grounds'],
+  'Engineering Block': ['Lecture theatre', 'Lab', 'Workshop', 'Offices', 'Toilets', 'Passage / corridor', 'Outside / grounds'],
+  'Science Block': ['Lecture theatre', 'Lab', 'Offices', 'Toilets', 'Passage / corridor', 'Outside / grounds'],
+  'Primary': ['Classroom', 'Staff room', 'Hall', 'Office', 'Toilets', 'Outside / grounds'],
+  'Refectory': ['Dining hall', 'Kitchen', 'Serving area', 'Toilets', 'Outside / grounds'],
+};
+
+// Common areas for a location: the defaults, then any the tracker named specifically (e.g. "Ablution-R47").
+export function areasFor(block) {
+  if (FACILITY_AREAS[block]) return FACILITY_AREAS[block];
+  return [...RESIDENCE_AREAS, ...roomsFor(block).filter((x) => !roomLike(x))];
+}
+// Numbered rooms only (no named areas).
+export function numberedRoomsFor(block) {
+  return roomsFor(block).filter(roomLike);
+}

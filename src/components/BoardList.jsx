@@ -6,10 +6,9 @@ import { ChevronRightIcon, FlagIcon, HomeIcon, LandmarkIcon, PinIcon } from './i
 
 const FACILITY_NAMES = FACILITIES_GROUP ? FACILITIES_GROUP.options : [];
 
-export default function BoardList({ tickets, loading, search, filterStatus, filterCategory, filterUrgent, onOpen, onOpenPhoto }) {
+export default function BoardList({ tickets, loading, search, filterStatus, filterCategory, filterUrgent, filterAssign = 'all', meUid = '', onOpen, onOpenPhoto }) {
   const [openSections, setOpenSections] = useState(() => new Set());
   const [openLocations, setOpenLocations] = useState(() => new Set());
-  const [hasInitialised, setHasInitialised] = useState(false);
 
   const filtered = useMemo(() => {
     return tickets
@@ -20,6 +19,8 @@ export default function BoardList({ tickets, loading, search, filterStatus, filt
         if (filterStatus !== 'all' && t.status !== filterStatus) return false;
         if (filterCategory !== 'all' && t.category !== filterCategory) return false;
         if (filterUrgent && !t.urgent) return false;
+        if (filterAssign === 'mine' && !(t.assignedTo && t.assignedTo.uid === meUid)) return false;
+        if (filterAssign === 'unassigned' && t.assignedTo) return false;
         if (!ticketMatchesSearch(t, search)) return false;
         return true;
       })
@@ -29,7 +30,7 @@ export default function BoardList({ tickets, loading, search, filterStatus, filt
         if (aUrg !== bUrg) return aUrg ? -1 : 1;
         return new Date(b.reportedAt) - new Date(a.reportedAt);
       });
-  }, [tickets, search, filterStatus, filterCategory, filterUrgent]);
+  }, [tickets, search, filterStatus, filterCategory, filterUrgent, filterAssign, meUid]);
 
   const byBlock = useMemo(() => {
     const m = new Map();
@@ -62,14 +63,6 @@ export default function BoardList({ tickets, loading, search, filterStatus, filt
     });
   }, [byBlock]);
 
-  // Give first-time visitors a useful starting point without expanding every location.
-  useEffect(() => {
-    if (hasInitialised || search.trim() || !sections.length) return;
-    const firstWithReports = sections.find((s) => s.withReports.length);
-    if (firstWithReports) setOpenSections(new Set([firstWithReports.key]));
-    setHasInitialised(true);
-  }, [sections, search, hasInitialised]);
-
   // While searching, open everything that has a match so results are never hidden behind a closed menu.
   useEffect(() => {
     if (!search.trim()) return;
@@ -93,13 +86,6 @@ export default function BoardList({ tickets, loading, search, filterStatus, filt
 
   return (
     <div>
-      <div className="board-list-toolbar">
-        <div>
-          <p className="section-kicker">Work queue</p>
-          <h2 className="board-list-title">Active locations</h2>
-        </div>
-        <span className="results-count">{filtered.length} {filtered.length === 1 ? 'issue' : 'issues'}</span>
-      </div>
       <div className="section-tiles" style={sections.length > 2 ? { gridTemplateColumns: '1fr 1fr 1fr' } : undefined}>
         {sections.map((s) => (
           <button

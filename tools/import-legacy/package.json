@@ -1,0 +1,7 @@
+{
+  "name": "import-legacy",
+  "private": true,
+  "type": "module",
+  "description": "One-off importer for the legacy tracker. Only needs firebase-admin for --commit; xlsx comes from the repo root.",
+  "devDependencies": { "firebase-admin": "^13.0.0" }
+}
