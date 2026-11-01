@@ -1,9 +1,8 @@
 import { CATEGORY_COLORS } from '../utils/constants';
 import { CategoryIcon } from './icons';
-import { categoryMeta, statusMeta, formatDate, blockLabel, roomLabel, openAgeMs, formatAge, ageColor } from '../utils/helpers';
+import { statusMeta, formatDate, blockLabel, roomLabel, openAgeMs, formatAge, ageColor } from '../utils/helpers';
 
 export default function TicketCard({ ticket, onOpen, onOpenPhoto }) {
-  const cat = categoryMeta(ticket.category);
   const st = statusMeta(ticket.status);
   const urgentActive = ticket.urgent && ticket.status !== 'done';
   const borderColor = urgentActive ? '#E15554' : st.color;
@@ -46,9 +45,6 @@ export default function TicketCard({ ticket, onOpen, onOpenPhoto }) {
             {ticket.reportedBy ? ticket.reportedBy + ' · ' : ''}{formatDate(ticket.reportedAt)}
             {openAgeMs(ticket) != null && (
               <span className="mono" style={{ marginLeft: 6, color: ageColor(openAgeMs(ticket)) }}>⏱ open {formatAge(openAgeMs(ticket))}</span>
-            )}
-            {ticket.assignedTo && (
-              <span className="dim" style={{ marginLeft: 6 }}>· {String(ticket.assignedTo.name || '').split(' ')[0]}</span>
             )}
           </span>
           <span className="mono status-pill" style={{ background: st.color + '22', color: st.color }}>

@@ -11,8 +11,9 @@ export default function StatsGrid({ tickets, activeStatus, onSelect }) {
       {STATUSES.map((s) => {
         const inner = (
           <>
+            <div className="stat-card-top"><span className="stat-status-dot" style={{ background: s.color, boxShadow: '0 0 0 4px ' + s.color + '22' }}></span><span className="stat-label">{s.label}</span></div>
             <div className="mono stat-num" style={{ color: s.color }}>{counts[s.id] || 0}</div>
-            <div className="stat-label">{s.label}</div>
+            <div className="stat-card-meta">{s.id === 'done' ? 'Closed this period' : (counts[s.id] || 0) === 0 ? 'Nothing waiting' : (counts[s.id] || 0) === 1 ? 'Needs attention' : 'Needs attention'}</div>
           </>
         );
         if (!onSelect) return <div key={s.id} className="stat-card">{inner}</div>;

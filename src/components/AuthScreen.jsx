@@ -4,6 +4,7 @@ import { useTheme } from '../hooks/useTheme';
 import { friendlyAuthError, validatePassword } from '../utils/helpers';
 import ThemeToggle from './ThemeToggle';
 import SubmissionForm from './SubmissionForm';
+import { WrenchIcon } from './icons';
 
 export default function AuthScreen() {
   const { signIn, signUp, forgotPassword, enterPublicMode, authError, setAuthError } = useAuth();
@@ -58,22 +59,23 @@ export default function AuthScreen() {
   }
 
   const shownError = error || authError;
-  const subtitle = audience === 'staff'
-    ? 'Staff sign in — admins, supervisors, maintainers and RAs'
-    : isSignup ? 'Create a student account to report issues and follow them' : 'Student sign in';
-
   return (
-    <div className="center-screen" style={{ padding: 24 }}>
-      <div style={{ width: '100%', maxWidth: 380 }}>
-        <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 12 }}>
+    <div className="center-screen auth-screen" style={{ padding: 24 }}>
+      <div className="auth-shell">
+        <div className="auth-brand-lockup">
+          <span className="brand-mark"><WrenchIcon size={20} stroke={2.2} /></span>
+          <span className="display">BIUST M&amp;F Log</span>
+        </div>
+        <div className="auth-theme-toggle">
           <ThemeToggle theme={theme} onToggle={toggleTheme} />
         </div>
-        <div style={{ textAlign: 'center', marginBottom: 20 }}>
-          <h1 className="display" style={{ fontSize: 23, margin: '0 0 4px' }}>BIUST Maintenance &amp; Facilities Log</h1>
-          <p className="dim" style={{ fontSize: 13, margin: 0 }}>{subtitle}</p>
+        <div className="auth-intro">
+          <p className="page-eyebrow"><span className="live-dot"></span>CAMPUS OPERATIONS</p>
+          <h1 className="display">Maintenance, made visible.</h1>
+          <p className="dim">Report an issue, follow the progress, and help keep BIUST moving.</p>
         </div>
 
-        <div className="cat-grid" style={{ gridTemplateColumns: '1fr 1fr', marginBottom: 14 }} role="tablist" aria-label="Sign in as">
+        <div className="audience-tabs" role="tablist" aria-label="Sign in as">
           <button type="button" role="tab" aria-selected={audience === 'student'} className={'cat-btn' + (audience === 'student' ? ' cat-btn-active' : '')} onClick={() => switchAudience('student')}>
             <span className="cat-btn-label">🎓 Student</span>
           </button>

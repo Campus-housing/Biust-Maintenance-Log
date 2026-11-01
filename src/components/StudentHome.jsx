@@ -51,9 +51,23 @@ export default function StudentHome({ onReport }) {
     return { label: 'Waiting for review', color: '#F2A93C', detail: 'Your RA will review this soon.' };
   }
 
+  const reviewedCount = subs ? subs.filter((s) => s.status === 'accepted' || s.status === 'declined').length : 0;
+  const activeCount = subs ? subs.filter((s) => s.status !== 'declined').length : 0;
+
   return (
-    <div>
-      <p style={{ fontSize: 15, margin: '0 0 12px' }}>Hi {(name || '').split(' ')[0] || 'there'} 👋</p>
+    <div className="student-home">
+      <section className="student-hero">
+        <div className="student-hero-copy">
+          <p className="page-eyebrow"><span className="live-dot"></span>PERSONAL SPACE</p>
+          <h2>Hi {(name || '').split(' ')[0] || 'there'} <span aria-hidden="true">👋</span></h2>
+          <p>Report a problem in a few taps and keep an eye on what happens next.</p>
+        </div>
+        <button type="button" className="student-hero-action" onClick={onReport}><span>+</span> Report an issue</button>
+        <div className="student-quick-stats" aria-label="Report summary">
+          <div><strong>{subs ? activeCount : '—'}</strong><span>open reports</span></div>
+          <div><strong>{subs ? reviewedCount : '—'}</strong><span>reviewed</span></div>
+        </div>
+      </section>
 
       {!emailVerified && (
         <div className="empty-card" style={{ textAlign: 'left', marginBottom: 14, padding: 16 }}>
@@ -69,9 +83,7 @@ export default function StudentHome({ onReport }) {
         </div>
       )}
 
-      <button type="button" className="submit-btn" style={{ marginBottom: 18 }} onClick={onReport}>Report an issue</button>
-
-      <label className="field-label">My reports</label>
+      <label className="section-kicker reports-kicker">My reports</label>
       <div style={{ marginTop: 8 }}>
         {subs === null ? (
           <div className="loading-wrap"><div className="spinner"></div></div>
